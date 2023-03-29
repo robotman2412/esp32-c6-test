@@ -28,6 +28,7 @@ add_link_options(
 	-nostdlib -nodefaultlibs
 	-static-pie -fPIE
 	-Wl,--gc-sections
+	-T${CMAKE_CURRENT_LIST_DIR}/linker.ld
 )
 
 # Add ABI files into include path.
@@ -37,8 +38,7 @@ include_directories(
 
 # Create output file and add sources.
 add_executable(main.o
+	src/entry.c
 	src/main.cpp
 	src/test.s
 )
-# Add linker script
-# set_target_properties(main.o PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_LIST_DIR}/linker.ld)

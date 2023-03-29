@@ -15,5 +15,6 @@ include_directories(
 
 # Create output file and add sources.
 add_library(elfloader
+	src/dynlinker.cpp
 	src/elfloader.cpp
 )

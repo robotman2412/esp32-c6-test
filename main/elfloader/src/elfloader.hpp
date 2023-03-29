@@ -67,6 +67,15 @@ enum class PHT {
 	TLS     = 0x07,
 };
 
+// Symbol type.
+enum class STT {
+	NOTYPE  = 0,
+	OBJECT  = 1,
+	FUNC    = 2,
+	SECTION = 3,
+	FILE    = 4,
+};
+
 
 // Common (32-bit and 64-bit) ELF file header information.
 struct Header {
@@ -202,6 +211,10 @@ using ProgInfo = ProgHeader;
 // Symbol header but with a name.
 struct SymInfo: public SymHeader {
 	std::string name;
+	
+	bool isFunction() const {
+		return (info & 0x0f) == (int) STT::FUNC;
+	}
 };
 
 
@@ -213,7 +226,7 @@ struct Program {
 	// Actual vaddr.
 	Addr vaddr_real;
 	// Offset (vaddr_real - vaddr_req).
-	Addr vaddr_offset() { return vaddr_real - vaddr_req; }
+	Addr vaddr_offset() const { return vaddr_real - vaddr_req; }
 	
 	// Allocated memory.
 	void *memory;
@@ -226,7 +239,7 @@ struct Program {
 		memory(nullptr), size(0) {}
 	
 	// True if `memory` is nonnull.
-	operator bool() { return !!memory; }
+	operator bool() const { return !!memory; }
 };
 
 
@@ -282,20 +295,20 @@ class ELFFile {
 		Program load(Allocator alloc);
 		
 		// Is this a VALID?
-		bool isValid() { return valid; }
+		bool isValid() const { return valid; }
 		// Get read-only copy of header.
-		const auto &getHeader() { return header; }
+		const auto &getHeader() const { return header; }
 		// Get read-only copy of section headers.
-		const auto &getSect() { return sectHeaders; }
+		const auto &getSect() const { return sectHeaders; }
 		// Get read-only copy of program headers.
-		const auto &getProg() { return progHeaders; }
+		const auto &getProg() const { return progHeaders; }
 		// Get read-only copy of symbols.
-		const auto &getSym() { return symbols; }
+		const auto &getSym() const { return symbols; }
 		
 		// Find section by name.
-		const SectInfo *findSect(const std::string &name);
+		const SectInfo *findSect(const std::string &name) const;
 		// Find symbol by name.
-		const SymInfo *findSym(const std::string &name);
+		const SymInfo *findSym(const std::string &name)const;
 };
 
 } // namespace elf

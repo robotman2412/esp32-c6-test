@@ -5,10 +5,17 @@
 #include <freertos/task.h>
 
 #include <stdio.h>
+
 #include <elfloader.hpp>
+#include <dynlinker.hpp>
 
 extern const char elf_start[] asm("_binary_main_o_start");
 extern const char elf_end[] asm("_binary_main_o_end");
+
+int callback() {
+	std::cout << "Callback!\n";
+	return 32;
+}
 
 extern "C" void app_main() {
     std::cout << "LOLOLOL time!\n";
@@ -105,10 +112,18 @@ extern "C" void app_main() {
 	using MessagePrinter = void*(*)(const char *);
 	using EF = int(*)(MessagePrinter);
 	
+	elf::SymMap map;
+	map["wrapper"] = (size_t) &callback;
+	bool linked = elf::importLink(myFile, loaded, map);
+	if (!linked) {
+		std::cout << "Link error!\n";
+		while (1) vTaskDelay(1000);
+	}
+	
 	std::cout << "Attempting to execute!\n";
 	EF entry = (EF) (myFile.getHeader().entry + loaded.vaddr_offset());
 	std::cout << "EV = 0x" << std::hex << (size_t) entry << '\n';
-	int res = entry(+[](const char *msg) -> void* {
+	int res = entry((MessagePrinter) +[](const char *msg) -> void* {
 		std::cout << "MessagePrinter: " << msg << '\n';
 		return nullptr;
 	});

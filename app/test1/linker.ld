@@ -1,14 +1,17 @@
 SECTIONS
 {
-	/* Origin is different than usual; near the end of RAM */
-	. = 0x00000000;
+	/* Origin is different than usual */
+	. = 0x00010000;
 	
 	/* Create symbols to keep track of `.init_array`. */
 	.init_array : {
 		__start_init_array = .;
-		*(.init_array)
+		KEEP(*(.init_array))
 		__stop_init_array = .;
 	}
+	
+	/* Custom ELF sections */
+	.pltf   : { *(.pltf) *(.pltf*) }
 	
 	/* The usual ELF sections */
 	.text   : { *(.text) *(.text*) }
