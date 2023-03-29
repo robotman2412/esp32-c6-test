@@ -102,14 +102,14 @@ extern "C" void app_main() {
 		std::cout << "Symbol 'mydata' not found!\n";
 	}
 	
-	using PLTF = void*(*)(const char *);
-	using EF = int(*)(PLTF);
+	using MessagePrinter = void*(*)(const char *);
+	using EF = int(*)(MessagePrinter);
 	
 	std::cout << "Attempting to execute!\n";
 	EF entry = (EF) (myFile.getHeader().entry + loaded.vaddr_offset());
 	std::cout << "EV = 0x" << std::hex << (size_t) entry << '\n';
 	int res = entry(+[](const char *msg) -> void* {
-		std::cout << "PLTF: " << msg << '\n';
+		std::cout << "MessagePrinter: " << msg << '\n';
 		return nullptr;
 	});
 	std::cout << "Exit code: 0x" << res << '\n';
