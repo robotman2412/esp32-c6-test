@@ -6,7 +6,7 @@ SHELL := /usr/bin/env bash
 
 .PHONY: prepare clean build flash monitor menuconfig
 
-all: prepare build install
+all: flash
 
 prepare:
 	git submodule update --init --recursive --depth 1
@@ -16,6 +16,7 @@ clean:
 	rm -rf "$(BUILDDIR)"
 
 build:
+	$(MAKE) -C app/test1
 	source "$(IDF_PATH)/export.sh" && idf.py build
 
 flash: build
