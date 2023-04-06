@@ -1,3 +1,26 @@
+/*
+	MIT License
+
+	Copyright (c) 2023 Julian Scheffers
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
 
 #pragma once
 
@@ -74,6 +97,13 @@ enum class STT {
 	FUNC    = 2,
 	SECTION = 3,
 	FILE    = 4,
+};
+
+// Symbol binding.
+enum class STB {
+	LOCAL  = 0,
+	GLOBAL = 1,
+	WEAK   = 2,
 };
 
 
@@ -174,8 +204,8 @@ struct ProgHeader {
 };
 static_assert(sizeof(ProgHeader) == 0x20 || sizeof(ProgHeader) == 0x38, "elf::ProgHeader must be either 0x20 or 0x38 bytes in size.");
 
-// Symbol header information.
-struct SymHeader {
+// Symbol table entry.
+struct SymEntry {
 	// Index in the name table.
 	uint32_t name_index;
 #ifdef ELFLOADER_ELF_IS_ELF32
@@ -197,7 +227,46 @@ struct SymHeader {
 	uint64_t size;
 #endif
 };
-static_assert(sizeof(SymHeader) == 0x10 || sizeof(SymHeader) == 0x18, "elf::SymHeader must be either 0x10 or 0x18 bytes in size.");
+static_assert(sizeof(SymEntry) == 0x10 || sizeof(SymEntry) == 0x18, "elf::SymEntry must be either 0x10 or 0x18 bytes in size.");
+
+// Relocation table entry (without addend).
+struct RelEntry {
+	// Offset in the subject section.
+	Addr     offset;
+	// Symbol index to apply to, relocation type.
+	uint32_t info;
+	
+	// Zero the numbers.
+	RelEntry():
+		offset(0), info(0) {}
+	
+	// Extract type.
+	uint8_t type() const { return info & 255; }
+	// Extract symbol index.
+	uint32_t symIndex() const { return info >> 8; }
+};
+
+// Relocation entry (with addend).
+struct RelaEntry {
+	// Offset in the subject section.
+	Addr     offset;
+	// Symbol index to apply to, relocation type.
+	uint32_t info;
+	// Addend.
+	int32_t  addend;
+	
+	// Zero the numbers.
+	RelaEntry():
+		offset(0), info(0), addend(0) {}
+	// Implicit converter.
+	RelaEntry(const RelEntry &other):
+		offset(other.offset), info(other.info), addend(0) {}
+	
+	// Extract type.
+	uint8_t type() const { return info & 255; }
+	// Extract symbol index.
+	uint32_t symIndex() const { return info >> 8; }
+};
 
 
 
@@ -209,11 +278,17 @@ struct SectInfo: public SectHeader {
 using ProgInfo = ProgHeader;
 
 // Symbol header but with a name.
-struct SymInfo: public SymHeader {
+struct SymInfo: public SymEntry {
 	std::string name;
 	
 	bool isFunction() const {
 		return (info & 0x0f) == (int) STT::FUNC;
+	}
+	bool isObject() const {
+		return (info & 0x0f) == (int) STT::OBJECT;
+	}
+	uint8_t bind() const {
+		return info >> 4;
 	}
 };
 
@@ -228,6 +303,8 @@ struct Program {
 	// Offset (vaddr_real - vaddr_req).
 	Addr vaddr_offset() const { return vaddr_real - vaddr_req; }
 	
+	// Actual address of entrypoint.
+	void *entry;
 	// Allocated memory.
 	void *memory;
 	// Size of allocated memory.
@@ -265,8 +342,10 @@ class ELFFile {
 		std::vector<ProgInfo> progHeaders;
 		// Section headers.
 		std::vector<SectInfo> sectHeaders;
-		// Symbols.
+		// Non-alocable symbol table.
 		std::vector<SymInfo> symbols;
+		// Alocable symbol table.
+		std::vector<SymInfo> dynSym;
 		
 	public:
 		// Empty, invalid ELF file.
@@ -284,12 +363,18 @@ class ELFFile {
 		// If valid, load program headers.
 		// Returns success status.
 		bool readProg();
-		// If valid, read symbols.
+		// If valid, read non-alocable symbols.
 		// Returns success status.
 		bool readSym();
+		// If valid, read alocable symbols.
+		// Returns success status.
+		bool readDynSym();
 		// Read all data in the ELF file.
 		// Returns success status.
 		bool read();
+		// Read data required for loading from the ELF file.
+		// Returns success status.
+		bool readDyn();
 		
 		// If valid, load into memory.
 		Program load(Allocator alloc);
@@ -302,8 +387,10 @@ class ELFFile {
 		const auto &getSect() const { return sectHeaders; }
 		// Get read-only copy of program headers.
 		const auto &getProg() const { return progHeaders; }
-		// Get read-only copy of symbols.
+		// Get read-only copy of non-alocable symbols.
 		const auto &getSym() const { return symbols; }
+		// Get read-only copy of alocable symbols.
+		const auto &getDynSym() const { return dynSym; }
 		
 		// Find section by name.
 		const SectInfo *findSect(const std::string &name) const;

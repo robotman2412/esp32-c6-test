@@ -24,24 +24,30 @@
 
 #pragma once
 
-// x86
-#define ELFLOADER_MACHINE_X86 0x03
-// x86-64
-#define ELFLOADER_MACHINE_X64 0x3E
-// RISC-V
-#define ELFLOADER_MACHINE_RISCV 0xF3
+#include "elfloader.hpp"
+#include "relocation.hpp"
 
+namespace loader {
 
+// Forwards directly to malloc.
+size_t mallocForward(size_t vaddr, size_t len, size_t align);
 
-// GCC architecture detection.
-#ifndef ELFLOADER_MACHINE
-#if defined(__i386__)
-#define ELFLOADER_MACHINE ELFLOADER_MACHINE_X86
-#elif defined(__x86_64__)
-#define ELFLOADER_MACHINE ELFLOADER_MACHINE_X64
-#elif defined(__riscv)
-#define ELFLOADER_MACHINE ELFLOADER_MACHINE_RISCV
-#else
-#error "Unable to detect architecture or unsupported architecture."
-#endif
-#endif
+// Represents a single program's execution environment.
+struct Linkage {
+	public:
+		// Map of all loaded symbols.
+		elf::SymMap symbols;
+		// List of loaded program entries.
+		std::vector<elf::Program> loaded;
+		// Entry function if applicable.
+		void *entryFunc = nullptr;
+		
+		// Load a library from a file.
+		// Returns success status.
+		bool loadLibrary(FILE *fd);
+		// Load the executable from a file.
+		// Returns success status.
+		bool loadExecutable(FILE *fd);
+};
+
+}

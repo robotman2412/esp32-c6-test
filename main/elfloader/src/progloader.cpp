@@ -22,26 +22,55 @@
 	SOFTWARE.
 */
 
-#pragma once
+#include "progloader.hpp"
 
-// x86
-#define ELFLOADER_MACHINE_X86 0x03
-// x86-64
-#define ELFLOADER_MACHINE_X64 0x3E
-// RISC-V
-#define ELFLOADER_MACHINE_RISCV 0xF3
+namespace loader {
 
+// Forwards directly to malloc.
+size_t mallocForward(size_t vaddr, size_t len, size_t align) {
+	return (size_t) malloc(len);
+}
 
+// Load a library from a file.
+// Returns success status.
+bool Linkage::loadLibrary(FILE *fd) {
+	// Create reading context.
+	auto elf = elf::ELFFile(fd);
+	
+	// Try to read data.
+	if (!elf.readDyn()) return false;
+	
+	// Try to load progbits.
+	auto prog = elf.load(mallocForward);
+	if (!prog) return false;
+	
+	// Try to perform the linkage.
+	if (!elf::relocate(elf, prog, symbols)) {
+		free(prog.memory);
+		return false;
+	}
+	
+	// Export the symbols.
+	if (!elf::exportSymbols(elf, prog, symbols)) {
+		free(prog.memory);
+		return false;
+	}
+	
+	// Add to loaded things list.
+	loaded.push_back(prog);
+	
+	return true;
+}
 
-// GCC architecture detection.
-#ifndef ELFLOADER_MACHINE
-#if defined(__i386__)
-#define ELFLOADER_MACHINE ELFLOADER_MACHINE_X86
-#elif defined(__x86_64__)
-#define ELFLOADER_MACHINE ELFLOADER_MACHINE_X64
-#elif defined(__riscv)
-#define ELFLOADER_MACHINE ELFLOADER_MACHINE_RISCV
-#else
-#error "Unable to detect architecture or unsupported architecture."
-#endif
-#endif
+// Load the executable from a file.
+// Returns success status.
+bool Linkage::loadExecutable(FILE *fd) {
+	// Yep this can be easily forwarded.
+	if (loadLibrary(fd)) {
+		entryFunc = loaded.back().entry;
+		return true;
+	}
+	return false;
+}
+
+};

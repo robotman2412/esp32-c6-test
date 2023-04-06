@@ -5,7 +5,8 @@ idf_component_register(
         "."
         "elfloader/src"
     EMBED_FILES
-        "../app/test1/build/main.o"
+        "../app/test2/build/main.o"
+        "../lib/test1/build/libtest.so"
 )
 
 add_subdirectory(elfloader)

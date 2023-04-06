@@ -24,24 +24,23 @@
 
 #pragma once
 
-// x86
-#define ELFLOADER_MACHINE_X86 0x03
-// x86-64
-#define ELFLOADER_MACHINE_X64 0x3E
-// RISC-V
-#define ELFLOADER_MACHINE_RISCV 0xF3
+#include "elfloader.hpp"
 
+namespace elf {
 
+// Map storing known symbol values.
+using SymMap = std::map<std::string, size_t>;
 
-// GCC architecture detection.
-#ifndef ELFLOADER_MACHINE
-#if defined(__i386__)
-#define ELFLOADER_MACHINE ELFLOADER_MACHINE_X86
-#elif defined(__x86_64__)
-#define ELFLOADER_MACHINE ELFLOADER_MACHINE_X64
-#elif defined(__riscv)
-#define ELFLOADER_MACHINE ELFLOADER_MACHINE_RISCV
-#else
-#error "Unable to detect architecture or unsupported architecture."
-#endif
-#endif
+// Reads an ADDEND for a relocation.
+Addr getAddend(const ELFFile &ctx, uint32_t relType, uint8_t *ptr);
+
+// Apply a single relocation.
+bool applyRelocation(const ELFFile &ctx, const Program &program, uint32_t relType, Addr symVal, Addr addend, uint8_t *ptr);
+
+// Apply all relocations for the loaded program.
+bool relocate(const ELFFile &ctx, const Program &program, const SymMap &map);
+
+// Extract symbols from a loaded program into the map.
+bool exportSymbols(const ELFFile &ctx, const Program &program, SymMap &map);
+
+} // namespace elf

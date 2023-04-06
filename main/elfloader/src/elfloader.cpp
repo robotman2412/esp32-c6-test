@@ -1,62 +1,29 @@
+/*
+	MIT License
+
+	Copyright (c) 2023 Julian Scheffers
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
 
 #include "elfloader.hpp"
 #include "elfloader_int.hpp"
-
-// A magic tester for multi boits
-static bool _elf_expect(FILE *fd, size_t len, const void *magic) {
-	uint8_t tmp[len];
-	size_t read = fread(tmp, 1, len, fd);
-	if (read != len) return false;
-	return !memcmp(tmp, magic, len);
-}
-#define EXPECT(count, magic) do { errno = 0; if (!_elf_expect(fd, count, magic)) {LOGE("I/O error: %s", strerror(errno)); return false;} } while(0)
-
-// A INTEGER READING DEVICE
-static bool _elf_readint(FILE *fd, uint64_t *out, size_t size, bool is_signed, bool is_le) {
-	uint64_t tmp = 0;
-	
-	if (is_le) {
-		for (size_t i = 0; i < size; i++) {
-			int c = fgetc(fd);
-			if (c == EOF) return false;
-			tmp |= (uint64_t) (c & 0xff) << (i*8);
-		}
-	} else {
-		for (size_t i = 0; i < size; i++) {
-			int c = fgetc(fd);
-			if (c == EOF) return false;
-			tmp |= c << ((size-i-1)*8);
-		}
-	}
-	
-	if (is_signed && (tmp >> (size*8-1))) {
-		for (size_t i = size; i < 8; i++) {
-			tmp |= 0xffllu << (i*8);
-		}
-	}
-	
-	*out = tmp;
-	return true;
-}
-#define READUINT(dest, size) do { errno = 0; uint64_t tmp; if (!_elf_readint(fd, &tmp, size, false, is_little_endian)) {LOGE("I/O error: %s", strerror(errno)); return false;} (dest) = tmp; } while(0)
-
-// SKIPS PADDING.
-static bool _elf_skip(FILE *fd, size_t len) {
-	long pre = ftell(fd);
-	fseek(fd, len, SEEK_CUR);
-	return ftell(fd) - pre == len;
-}
-#define SKIP(size) do { errno = 0; if (!_elf_skip(fd, (size))) {LOGE("I/O error: %s", strerror(errno)); return false;} } while(0)
-
-// SEEKD LOKATON.
-static bool _elf_seek(FILE *fd, size_t idx) {
-	fseek(fd, idx, SEEK_SET);
-	return ftell(fd) == idx;
-}
-#define SEEK(idx) do { errno = 0; if (!_elf_seek(fd, (idx))) {LOGE("I/O error: %s", strerror(errno)); return false;} } while(0)
-
-// READ BIANIER.
-#define READ(ptr, len) do { auto tmplen = (len); errno = 0; if (fread(ptr, 1, tmplen, fd) != tmplen) {LOGE("I/O error: %s", strerror(errno)); return false;} } while(0)
 
 
 namespace elf {
@@ -213,7 +180,7 @@ bool ELFFile::readProg() {
 	return true;
 }
 
-// If valid, read symbols.
+// If valid, read non-alocable symbols.
 // Returns success status.
 bool ELFFile::readSym() {
 	if (!valid) return false;
@@ -240,11 +207,10 @@ bool ELFFile::readSym() {
 		// Read raw symbol entry data.
 		SymInfo sym;
 		SEEK(symtab->offset + i * symtab->entry_size);
-		READ(&sym, sizeof(SymHeader));
+		READ(&sym, sizeof(SymEntry));
 		
 		// Bounds check.
-		if (sym.section >= 0xff00) continue;
-		if (sym.section >= sectHeaders.size()) {
+		if (sym.section >= sectHeaders.size() && sym.section < 0xff00) {
 			LOGE("ELF file invalid (st_shndx = 0x%04x)", sym.section);
 			return false;
 		}
@@ -277,12 +243,83 @@ bool ELFFile::readSym() {
 	return true;
 }
 
+// If valid, read alocable symbols.
+// Returns success status.
+bool ELFFile::readDynSym() {
+	if (!valid) return false;
+	
+	// Find `.symtab` section.
+	const auto *symtab = findSect(".dynsym");
+	if (!symtab) return true;
+	
+	// Validate `.symtab` symtabion.
+	if (symtab->type != (int) SHT::DYNSYM) {
+		LOGE("ELF file invalid (`.dynsym`: sh_type = 0x%08x)", (unsigned) symtab->type);
+		return false;
+	}
+	if (!symtab->link || symtab->link >= sectHeaders.size()) {
+		LOGE("ELF file invalid (`.dynsym`: sh_link = 0x%08x)", (unsigned) symtab->type);
+		return false;
+	}
+	
+	// Find `.strtab` section.
+	const auto &strtab = sectHeaders[symtab->link];
+	
+	// Start reading some data.
+	for (size_t i = 0; i < symtab->file_size / symtab->entry_size; i++) {
+		// Read raw symbol entry data.
+		SymInfo sym;
+		SEEK(symtab->offset + i * symtab->entry_size);
+		READ(&sym, sizeof(SymEntry));
+		
+		// Bounds check.
+		if (sym.section >= sectHeaders.size() && sym.section < 0xff00) {
+			LOGE("ELF file invalid (st_shndx = 0x%04x)", sym.section);
+			return false;
+		}
+		
+		dynSym.push_back(std::move(sym));
+	}
+	
+	// Read raw name strings.
+	std::vector<char> cache;
+	cache.reserve(strtab.file_size);
+	SEEK(strtab.offset);
+	READ(cache.data(), strtab.file_size);
+	
+	// Second pass to assign names to symbols.
+	for (auto &sym: dynSym) {
+		// Bounds checking.
+		if (sym.name_index >= strtab.file_size) {
+			LOGE("ELF file invalid (st_name = %d)", (int) sym.name_index);
+			return false;
+		}
+		
+		// Determine length.
+		size_t maxLen = strtab.file_size - sym.name_index - 1;
+		size_t len = strnlen(cache.data() + sym.name_index, maxLen);
+		
+		// Copy the string from the cache.
+		sym.name.assign(cache.data() + sym.name_index, len);
+	}
+	
+	return true;
+}
+
 // Read all data in the ELF file.
 // Returns success status.
 bool ELFFile::read() {
 	if (!valid) valid = readHeader();
-	return valid & readProg() && readSect() && readSym();
+	return valid & readProg() && readSect() && readSym() && readDynSym();
 }
+
+// Read data required for loading from the ELF file.
+// Returns success status.
+bool ELFFile::readDyn() {
+	if (!valid) valid = readHeader();
+	return valid & readProg() && readSect() && readDynSym();
+}
+
 
 // If valid, load into memory.
 // Returns success status.
@@ -313,6 +350,7 @@ Program ELFFile::load(Allocator alloc) {
 		LOGE("Unable to allocate %zu bytes for loading", out.size);
 		return {};
 	}
+	out.entry = (void *) (header.entry + out.vaddr_offset());
 	
 	// Copy datas.
 	for (const auto &prog: progHeaders) {

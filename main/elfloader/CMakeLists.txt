@@ -7,6 +7,7 @@ endif()
 
 # Define the project.
 project(elfloader LANGUAGES C CXX ASM)
+add_compile_options(-Wno-unused-function)
 
 # Add ABI files into include path.
 include_directories(
@@ -15,6 +16,8 @@ include_directories(
 
 # Create output file and add sources.
 add_library(elfloader
-	src/dynlinker.cpp
+	src/relocation/reloc_riscv.cpp
+	src/relocation.cpp
+	src/progloader.cpp
 	src/elfloader.cpp
 )

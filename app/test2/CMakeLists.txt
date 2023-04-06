@@ -5,6 +5,8 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS true)
+
 # Set the C and C++ compilers to use.
 set(CMAKE_C_COMPILER "riscv64-linux-gnu-gcc")
 set(CMAKE_CXX_COMPILER "riscv64-linux-gnu-g++")
@@ -16,16 +18,33 @@ set(CMAKE_CXX_COMPILER_FORCED true)
 project(test1 LANGUAGES C CXX ASM)
 
 # Compiler options: Exceptions disabled, no system libraries.
-add_compile_options(-march=rv32imac -mabi=ilp32 -ffreestanding -fPIC)
+add_compile_options(
+	-march=rv32imac -mabi=ilp32
+	-ffreestanding -fno-exceptions
+	-fPIE
+	-fdata-sections -ffunction-sections
+)
 # Linker options: Relocatable, no system libraries
-add_link_options(-march=rv32imac -mabi=ilp32 -nostdlib -nodefaultlibs -fPIC)
+add_link_options(
+	-march=rv32imac -mabi=ilp32
+	-nostdlib -nodefaultlibs
+	-fPIE
+	-Wl,--gc-sections
+	-T${CMAKE_CURRENT_LIST_DIR}/linker.ld
+)
 
 # Add ABI files into include path.
 include_directories(
 	src
 )
 
+
 # Create output file and add sources.
-add_library(test SHARED
+add_executable(main.o
+	src/entry.c
 	src/main.cpp
 )
+
+# Link the libraries yes.
+target_link_libraries(main.o ${CMAKE_CURRENT_LIST_DIR}/../../lib/test1/build/libtest.so)
+

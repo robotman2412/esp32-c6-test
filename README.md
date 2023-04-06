@@ -5,7 +5,7 @@ The current implementation works for 32-bit and 64-bit RISC-V CPUs.
 
 ## Prerequisites
 
-1. `apt install gcc-riscv64-unknown-elf`
+1. `apt install gcc-riscv64-linux-gnu`
 2. `make prepare`
 
 ## Put it on your ESP32-C6
