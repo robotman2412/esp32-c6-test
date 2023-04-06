@@ -1,7 +1,7 @@
 # ESP32-C6 test
 
 This is a test for dynamically loading code on the ESP32-C6.
-The current implementation works for 32-bit and 64-bit RISC-V CPUs.
+The current implementation works for 32-bit RISC-V CPUs.
 
 ## Prerequisites
 
