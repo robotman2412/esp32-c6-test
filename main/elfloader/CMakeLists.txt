@@ -17,6 +17,8 @@ include_directories(
 # Create output file and add sources.
 add_library(elfloader
 	src/relocation/reloc_riscv.cpp
+	src/mpu/mpu_riscv32_pmp.cpp
+	src/mpu.cpp
 	src/relocation.cpp
 	src/progloader.cpp
 	src/elfloader.cpp

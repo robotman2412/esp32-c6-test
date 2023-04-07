@@ -10,13 +10,14 @@ all: flash
 
 prepare:
 	git submodule update --init --recursive --depth 1
+	sudo apt install g++-riscv64-linux-gnu gcc-riscv64-linux-gnu
 	cd esp-idf; bash install.sh
 
 clean:
 	rm -rf "$(BUILDDIR)"
 
 build:
-	$(MAKE) -C app/test1
+	$(MAKE) -C app/test2
 	source "$(IDF_PATH)/export.sh" && idf.py build
 
 flash: build

@@ -11,6 +11,7 @@
 #include <progloader.hpp>
 
 #include <relocation.hpp>
+#include <mpu.hpp>
 
 extern const char elf_start[] asm("_binary_main_o_start");
 extern const char elf_end[] asm("_binary_main_o_end");
@@ -20,6 +21,10 @@ extern const char elflib_end[] asm("_binary_libtest_so_end");
 
 extern "C" void app_main() {
 	// esp_log_level_set("elfloader", ESP_LOG_DEBUG);
+	size_t cfg0;
+	asm volatile ("csrr %0, pmpcfg0" : "=r" (cfg0));
+	std::cout << "CSR pmpcfg0:   " << std::hex << cfg0 << '\n';
+	std::cout << "MPU supported: " << std::dec << mpu::supported() << '\n';
 	
 	loader::Linkage prog;
 	
