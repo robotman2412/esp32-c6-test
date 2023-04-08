@@ -47,9 +47,9 @@ extern const int PRIV_MAX;
 // Region addresses may be either constant or dynamic based on the type of MPU.
 struct Region {
 	// Region starting address.
-	size_t base;
+	uint64_t base;
 	// Region length.
-	size_t size;
+	uint64_t size;
 	
 	// The memory's privilege requirement.
 	int privilege;

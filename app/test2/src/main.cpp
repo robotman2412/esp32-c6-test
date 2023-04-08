@@ -20,7 +20,10 @@ const char mydata[] = "HSD";
 extern "C" int callback();
 extern "C" int variabler;
 
+const int device = 0;
+
 int main() {
 	// return callback() + variabler;
+	*(int*)&device = 1;
 	return (int) callback;
 }

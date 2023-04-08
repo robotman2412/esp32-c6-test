@@ -19,29 +19,78 @@ extern const char elf_end[] asm("_binary_main_o_end");
 extern const char elflib_start[] asm("_binary_libtest_so_start");
 extern const char elflib_end[] asm("_binary_libtest_so_end");
 
+void returner() {
+	return;
+}
+
 extern "C" void app_main() {
 	// esp_log_level_set("elfloader", ESP_LOG_DEBUG);
-	size_t cfg0;
-	asm volatile ("csrr %0, misa" : "=r" (cfg0));
-	std::cout << "CSR misa:      " << std::hex << cfg0 << '\n';
-	std::cout << "MPU supported: " << std::dec << mpu::supported() << '\n';
+	size_t misa;
+	asm volatile ("csrr %0, misa" : "=r" (misa));
+	std::cout << "CSR misa:      0x" << std::hex << misa << '\n';
+	size_t mstatus;
+	asm volatile ("csrr %0, mstatus" : "=r" (mstatus));
+	std::cout << "CSR mstatus:   0x" << mstatus << '\n';
 	
-	loader::Linkage prog;
+	// asm volatile ("csrw pmpaddr0, %0" :: "r" (0x8fffffff));
+	// asm volatile ("csrw pmpaddr1, %0" :: "r" (0xafffffff));
+	// asm volatile ("csrw pmpcfg0,  %0" :: "r" (0x9898));
 	
-	FILE *elflib_fd = fmemopen((void *) elflib_start, elflib_end - elflib_start, "r");
-	bool res = prog.loadLibrary(elflib_fd);
-	if (!res) return;
+	size_t addr = (size_t) malloc(256);
+	addr = addr + 128 - addr % 128;
+	int *thing = (int *) addr;
 	
-	FILE *elf_fd = fmemopen((void *) elf_start, elf_end - elf_start, "r");
-	res = prog.loadExecutable(elf_fd);
-	if (!res) return;
+	memcpy(thing, (void *) &returner, 128);
+	void (*funcptr)() = (void(*)()) thing;
 	
-	// Time to run prog.
-	std::cout << "Running program!\n";
-	using EF = int(*)(int(*)(const char*));
-	EF entry = (EF) prog.entryFunc;
-	int ec = entry(puts);
-	std::cout << "Exit code 0x" << std::hex << ec << '\n';
+	mpu::appendRegion({
+		(size_t) thing, 128,
+		0,
+		1, 1, 1,
+		1
+	});
+	
+	// mpu::appendRegion({
+	// 	0xffffc000, 256,
+	// 	0,
+	// 	1, 0, 0,
+	// 	1
+	// });
+	
+	funcptr();
+	std::cout << "Did a execute.\n";
+	
+	asm volatile ("addi x0, %0, 0" :: "r" (thing[0]));
+	std::cout << "Did a read.\n";
+	
+	thing[0] = 1932;
+	std::cout << "Did a write.\n";
+	
+	auto regions = mpu::readRegions();
+	for (const auto &region: regions) {
+		std::cout << "Region:\n";
+		std::cout << "  Base:   0x" << std::hex << region.base << '\n';
+		std::cout << "  Size:   0x" << region.size << '\n';
+		std::cout << "  RWX:    " << region.read << region.write << region.exec << '\n';
+		std::cout << "  Active: " << region.active << "\n\n";
+	}
+	
+	// loader::Linkage prog;
+	
+	// FILE *elflib_fd = fmemopen((void *) elflib_start, elflib_end - elflib_start, "r");
+	// bool res = prog.loadLibrary(elflib_fd);
+	// if (!res) return;
+	
+	// FILE *elf_fd = fmemopen((void *) elf_start, elf_end - elf_start, "r");
+	// res = prog.loadExecutable(elf_fd);
+	// if (!res) return;
+	
+	// // Time to run prog.
+	// std::cout << "Running program!\n";
+	// using EF = int(*)(int(*)(const char*));
+	// EF entry = (EF) prog.entryFunc;
+	// int ec = entry(puts);
+	// std::cout << "Exit code 0x" << std::hex << ec << '\n';
 }
 
 
