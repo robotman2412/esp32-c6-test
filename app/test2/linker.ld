@@ -1,22 +1,26 @@
+PHDRS
+{
+	/* Text, readonly. */
+	codeseg PT_LOAD;
+	rodataseg PT_LOAD;
+	dataseg PT_LOAD;
+}
+
 SECTIONS
 {
 	/* Origin is different than usual */
 	. = 0x00010000;
 	
-	/* Create symbols to keep track of `.init_array`. */
+	/* The usual ELF sections */
+	.text   : { *(.text) *(.text*) } :codeseg
 	.init_array : {
+		/* Create symbols to keep track of `.init_array`. */
 		__start_init_array = .;
 		KEEP(*(.init_array))
 		__stop_init_array = .;
-	}
-	
-	/* Custom ELF sections */
-	.pltf   : { *(.pltf) *(.pltf*) }
-	
-	/* The usual ELF sections */
-	.text   : { *(.text) *(.text*) }
-	.rodata : { *(.rodata) *(.rodata*) }
-	.data   : { *(.data) *(.data*) }
+	} :rodataseg
+	.rodata : { *(.rodata) *(.rodata*) } :rodataseg
+	.data   : { *(.data) *(.data*) } :dataseg
 	.bss    : { *(.bss) *(.bss*) }
 }
 

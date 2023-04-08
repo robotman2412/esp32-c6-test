@@ -21,15 +21,15 @@ project(test1 LANGUAGES C CXX ASM)
 add_compile_options(
 	-march=rv32imac -mabi=ilp32
 	-ffreestanding -fno-exceptions
-	-fPIE -O0
-	# -fdata-sections -ffunction-sections
+	-fPIE
+	-fdata-sections -ffunction-sections
 )
 # Linker options: Relocatable, no system libraries
 add_link_options(
 	-march=rv32imac -mabi=ilp32
 	-nostdlib -nodefaultlibs
 	-fPIE
-	# -Wl,--gc-sections
+	-Wl,--gc-sections
 	-T${CMAKE_CURRENT_LIST_DIR}/linker.ld
 )
 

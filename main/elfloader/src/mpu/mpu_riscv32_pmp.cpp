@@ -29,6 +29,8 @@
 
 // PMP region count: either 16 or 64.
 #define PMP_REGIONS 16
+// Lock entries when appending.
+#define PMP_LOCK 1
 
 // pmp*cfg A field values.
 enum class PMPA {
@@ -342,7 +344,7 @@ static void writeCfg(int index, uint8_t in) {
 	// Put in new data.
 	orig |= in << (index*8);
 	// Write back.
-	writeCfgRaw(index, orig);
+	writeCfgRaw(index/4, orig);
 }
 
 // Write pmpaddr* register by index.
@@ -436,13 +438,14 @@ static int findEmpty() {
 static int findEmptyPair() {
 	size_t pmpPrev = 0xffffffff;
 	for (int i = 0; i < PMP_REGIONS; i += 4) {
-		size_t cfgRaw = readCfgRaw(i);
-		if (!(pmpPrev & 0x98000000) && !(cfgRaw & 0x98)) return i;
+		size_t cfgRaw = readCfgRaw(i/4);
+		if (!(pmpPrev & 0x98000000) && !(cfgRaw & 0x98)) return i-1;
 		for (int j = 0; j < 3; j++) {
 			uint8_t cfg0 = cfgRaw >> (j*8);
 			uint8_t cfg1 = cfgRaw >> (j*8+8);
 			if (!(cfg0 & 0x98) && !(cfg1 & 0x98)) return i+j;
 		}
+		pmpPrev = cfgRaw;
 	}
 	return -1;
 }
@@ -458,6 +461,14 @@ int regionMax() {
 	return PMP_REGIONS;
 }
 
+// Determine granularity.
+size_t granularity() {
+	int slot = findEmpty();
+	writeAddr(slot, -1);
+	auto gmask = readAddr(slot);
+	auto granularity = ~gmask + 1;
+	return granularity * 4;
+}
 
 // Determine whether two [start,start+len) ranges overlap.
 static bool overlap(auto startA, auto lenA, auto startB, auto lenB) {
@@ -499,7 +510,7 @@ static Region decodeRegion(int index, uint8_t *pmpcfg, size_t *pmpaddr) {
 			pmpaddr[index] * 4, 4,
 			PRIV_MIN,
 			config.r, config.w, config.x,
-			true
+			!PMP_LOCK || config.l
 		};
 		
 	} else if (config.a == PMPA::NAPOT) {
@@ -513,7 +524,7 @@ static Region decodeRegion(int index, uint8_t *pmpcfg, size_t *pmpaddr) {
 			(pmpaddr[index] & ~mask) * 4, len,
 			PRIV_MIN,
 			config.r, config.w, config.x,
-			true
+			!PMP_LOCK || config.l
 		};
 		
 	} else /*if (config.a == PMPA::TOR)*/ {
@@ -526,7 +537,7 @@ static Region decodeRegion(int index, uint8_t *pmpcfg, size_t *pmpaddr) {
 			base, top-base,
 			PRIV_MIN,
 			config.r, config.w, config.x,
-			true
+			!PMP_LOCK || config.l
 		};
 	}
 }
@@ -535,17 +546,20 @@ static Region decodeRegion(int index, uint8_t *pmpcfg, size_t *pmpaddr) {
 // Try to append or update an MPU region.
 // If this partially overlaps with a preexisting region, the existing region is removed.
 bool appendRegion(Region wdata) {
+	wdata.read |= wdata.write | wdata.exec;
+	
 	// Determine whether two entries are required.
 	bool isLong = wdata.base % wdata.size || (wdata.size & (wdata.size-1));
 	
 	// Find an empty slot.
-	int  slot   = isLong ? findEmptyPair() : findEmpty();
+	int slot = isLong ? findEmptyPair() : findEmpty();
 	if (slot < 0) {
 		std::cout << "MPU: Out of entries.\n";
 		return false;
 	}
 	
 	// Determine address granularity.
+	std::cout << "Slot: " << std::dec << slot << '\n';
 	writeAddr(slot, -1);
 	auto gmask = readAddr(slot);
 	auto granularity = ~gmask + 1;
@@ -560,6 +574,11 @@ bool appendRegion(Region wdata) {
 		return false;
 	}
 	
+	// Don't bother if the permissions are RWX.
+	if (wdata.read && wdata.write && wdata.exec) {
+		return true;
+	}
+	
 	// Choose strategy.
 	if (isLong) {
 		// Two-entry strategy.
@@ -571,13 +590,14 @@ bool appendRegion(Region wdata) {
 		writeAddr(slot,   wdata.base >> 2);
 		writeAddr(slot+1, (wdata.base >> 2) + (wdata.size >> 2));
 		// Generate config.
-		uint8_t config = 0x88;
+		uint8_t config = PMP_LOCK * 0x80;
 		if (wdata.read)  config |= 0x01;
 		if (wdata.write) config |= 0x02;
 		if (wdata.exec)  config |= 0x04;
 		std::cout << "  Cfg:  0x" << (unsigned) config << '\n';
 		std::cout << '\n';
-		writeCfg(slot, config);
+		writeCfg(slot, config | 0x10);
+		writeCfg(slot+1, config | 0x08);
 		
 	} else if ((wdata.base | wdata.size) & 4) {
 		// NA4 strategy.
@@ -588,7 +608,7 @@ bool appendRegion(Region wdata) {
 		std::cout << "  Addr: 0x" << addr << '\n';
 		writeAddr(slot, wdata.base >> 2);
 		// Generate config.
-		uint8_t config = 0x90;
+		uint8_t config = PMP_LOCK * 0x80 | 0x10;
 		if (wdata.read)  config |= 0x01;
 		if (wdata.write) config |= 0x02;
 		if (wdata.exec)  config |= 0x04;
@@ -609,7 +629,7 @@ bool appendRegion(Region wdata) {
 		std::cout << "  Addr: 0x" << addr << '\n';
 		writeAddr(slot, addr);
 		// Generate config.
-		uint8_t config = 0x98;
+		uint8_t config = PMP_LOCK * 0x80 | 0x18;
 		if (wdata.read)  config |= 0x01;
 		if (wdata.write) config |= 0x02;
 		if (wdata.exec)  config |= 0x04;
@@ -618,7 +638,7 @@ bool appendRegion(Region wdata) {
 		writeCfg(slot, config);
 	}
 	
-	return false;
+	return true;
 }
 
 // Get a list containing all regions present.

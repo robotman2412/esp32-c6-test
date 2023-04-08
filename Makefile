@@ -18,6 +18,7 @@ clean:
 
 build:
 	$(MAKE) -C app/test2
+	$(MAKE) -C lib/test1
 	source "$(IDF_PATH)/export.sh" && idf.py build
 
 flash: build

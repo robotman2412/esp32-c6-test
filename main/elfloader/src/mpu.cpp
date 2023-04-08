@@ -24,6 +24,8 @@
 
 #include "mpu.hpp"
 
+using namespace elf;
+
 namespace mpu {
 
 // Whether this platform has an MPU.
@@ -56,6 +58,9 @@ int regionCount() { return 0; }
 // Get maximum number of regions in current configuration.
 int regionMax() __attribute__((weak));
 int regionMax() { return 0; }
+// Determine granularity.
+size_t granularity() __attribute__((weak));
+size_t granularity() { return 4096; }
 
 
 // Try to append or update an MPU region.
@@ -67,5 +72,55 @@ bool appendRegion(Region wdata) { return false; }
 // Entries may be in the list but empty.
 std::vector<Region> readRegions() __attribute__((weak));
 std::vector<Region> readRegions() { return {}; }
+
+
+
+// Merge regions of the same type into a new list.
+void pureMerge(std::vector<Region> &regions) {
+	
+}
+
+// Aggressively merge regions, even if that means losing information.
+void lossyMerge(std::vector<Region> &regions) {
+	pureMerge(regions);
+}
+
+// Set memory protections based on program headers.
+bool applyPH(const ELFFile &ctx, const Program &program) {
+	std::vector<Region> tmp;
+	
+	for (const auto &prog: ctx.getProg()) {
+		// Skip non-resident segments.
+		if (prog.type != (int) PHT::LOAD) continue;
+		
+		tmp.push_back({
+			// Compute address.
+			prog.vaddr + program.vaddr_offset(),
+			prog.mem_size,
+			// Default privilege.
+			PRIV_MIN,
+			// Forwards permission flags.
+			!!(prog.flags & 0x4),
+			!!(prog.flags & 0x2),
+			!!(prog.flags & 0x1),
+			// Active region.
+			1
+		});
+	}
+	
+	pureMerge(tmp);
+	
+	for (const auto &region: tmp) {
+		auto res = appendRegion(region);
+		if (!res) return false;
+	}
+	
+	return true;
+}
+
+// Set memory protections based on section headers.
+bool applySect(const ELFFile &ctx, const Program &program) {
+	return false;
+}
 
 };

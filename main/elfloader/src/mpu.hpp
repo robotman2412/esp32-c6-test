@@ -29,6 +29,8 @@
 
 #include <vector>
 
+#include "elfloader.hpp"
+
 namespace mpu {
 
 // Whether this platform has an MPU.
@@ -76,6 +78,8 @@ bool setActive(bool activity);
 int regionCount();
 // Get maximum number of regions in current configuration.
 int regionMax();
+// Determine granularity.
+size_t granularity();
 
 // Try to append or update an MPU region.
 // If this partially overlaps with a preexisting region, the existing region is removed.
@@ -84,5 +88,14 @@ bool appendRegion(Region wdata);
 // On fail, returns an empty list.
 // Entries may be in the list but empty.
 std::vector<Region> readRegions();
+
+// Merge regions of the same type into a new list.
+void pureMerge(std::vector<Region> &inout);
+// Aggressively merge regions, even if that means losing information.
+void lossyMerge(std::vector<Region> &inout);
+// Set memory protections based on program headers.
+bool applyPH(const elf::ELFFile &ctx, const elf::Program &program);
+// Set memory protections based on section headers.
+bool applySect(const elf::ELFFile &ctx, const elf::Program &program);
 
 };

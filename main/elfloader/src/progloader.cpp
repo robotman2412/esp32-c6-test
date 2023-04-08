@@ -23,12 +23,21 @@
 */
 
 #include "progloader.hpp"
+#include "mpu.hpp"
+#include <iostream>
 
 namespace loader {
 
 // Forwards directly to malloc.
 size_t mallocForward(size_t vaddr, size_t len, size_t align) {
 	return (size_t) malloc(len);
+}
+
+// Uses malloc to get an ALIGNED chunk of stuf.
+size_t mallocAligned(size_t vaddr, size_t len, size_t align) {
+	size_t addr = (size_t) malloc(len + align);
+	addr += align - addr % align;
+	return addr;
 }
 
 // Load a library from a file.
@@ -41,7 +50,7 @@ bool Linkage::loadLibrary(FILE *fd) {
 	if (!elf.readDyn()) return false;
 	
 	// Try to load progbits.
-	auto prog = elf.load(mallocForward);
+	auto prog = elf.load(mallocAligned);
 	if (!prog) return false;
 	
 	// Try to perform the linkage.
@@ -58,6 +67,11 @@ bool Linkage::loadLibrary(FILE *fd) {
 	
 	// Add to loaded things list.
 	loaded.push_back(prog);
+	
+	// Apply MPU shenanigans.
+	if (!mpu::applyPH(elf, prog)) {
+		std::cout << "Applying MPU settings failed, ignoring.\n";
+	}
 	
 	return true;
 }

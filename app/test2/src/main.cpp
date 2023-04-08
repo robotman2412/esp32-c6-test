@@ -17,13 +17,14 @@ void corooror() {
 const char mydata[] = "HSD";
 
 
-extern "C" int callback();
+extern "C" int callback(const int *);
 extern "C" int variabler;
 
 const int device = 0;
 
 int main() {
 	// return callback() + variabler;
-	*(int*)&device = 1;
-	return (int) callback;
+	// *(int*)&device = 1;
+	int thing;
+	return callback(&thing);
 }

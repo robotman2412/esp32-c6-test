@@ -48,7 +48,7 @@ static inline bool getDynSym(Addr &out, const ELFFile &ctx, const Program &progr
 			// Not found.
 			return false;
 		}
-		LOGI("Match found for %s", sym.name.c_str());
+		LOGD("Match found for %s", sym.name.c_str());
 		out = iter->second;
 		return true;
 		

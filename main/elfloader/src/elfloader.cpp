@@ -354,10 +354,18 @@ Program ELFFile::load(Allocator alloc) {
 	
 	// Copy datas.
 	for (const auto &prog: progHeaders) {
+		// Skip non-resident segments.
+		if (prog.type != (int) PHT::LOAD) continue;
+		
 		fseek(fd, prog.offset, SEEK_SET);
 		size_t addr = prog.vaddr + offs;
 		fread((void *) addr, 1, prog.file_size, fd);
 		memset((void *) (addr + prog.file_size), 0, prog.mem_size - prog.file_size);
+		
+		char r = prog.flags & 0x4 ? 'r' : '-';
+		char w = prog.flags & 0x2 ? 'w' : '-';
+		char x = prog.flags & 0x1 ? 'x' : '-';
+		LOGD("Prog 0x%x bytes at 0x%x %c%c%c", (int) prog.file_size, (int) (prog.offset + offs), r,w,x);
 	}
 	
 	return out;
