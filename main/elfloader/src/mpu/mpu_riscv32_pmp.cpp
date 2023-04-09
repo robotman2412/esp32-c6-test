@@ -31,6 +31,8 @@
 #define PMP_REGIONS 16
 // Lock entries when appending.
 #define PMP_LOCK 1
+// Enable TOR merging optimisation.
+#define PMP_TOR_MERGING 1
 
 // pmp*cfg A field values.
 enum class PMPA {
@@ -580,9 +582,26 @@ bool appendRegion(Region wdata) {
 	}
 	
 	// Choose strategy.
-	if (isLong) {
-		// Two-entry strategy.
-		std::cout << "TOP:\n";
+	if (isLong && PMP_TOR_MERGING && readAddr(slot-1) == (wdata.base >> 2)) {
+		// Single-entry TOR strategy.
+		std::cout << "TOR (1):\n";
+		std::cout << "  Base: 0x" << std::hex << wdata.base << '\n';
+		std::cout << "  Size: 0x" << std::hex << wdata.size << '\n';
+		std::cout << "  Adr0: 0x" << (wdata.base >> 2) << '\n';
+		std::cout << "  Adr1: 0x" << ((wdata.base >> 2) + (wdata.size >> 2)) << '\n';
+		writeAddr(slot, (wdata.base >> 2) + (wdata.size >> 2));
+		// Generate config.
+		uint8_t config = PMP_LOCK * 0x80;
+		if (wdata.read)  config |= 0x01;
+		if (wdata.write) config |= 0x02;
+		if (wdata.exec)  config |= 0x04;
+		std::cout << "  Cfg:  0x" << (config | 0x08) << '\n';
+		std::cout << '\n';
+		writeCfg(slot, config | 0x08);
+		
+	} else if (isLong) {
+		// Two-entry TOR strategy.
+		std::cout << "TOR (2):\n";
 		std::cout << "  Base: 0x" << std::hex << wdata.base << '\n';
 		std::cout << "  Size: 0x" << std::hex << wdata.size << '\n';
 		std::cout << "  Adr0: 0x" << (wdata.base >> 2) << '\n';
@@ -594,7 +613,7 @@ bool appendRegion(Region wdata) {
 		if (wdata.read)  config |= 0x01;
 		if (wdata.write) config |= 0x02;
 		if (wdata.exec)  config |= 0x04;
-		std::cout << "  Cfg:  0x" << (unsigned) config << '\n';
+		std::cout << "  Cfg:  0x" << (config | 0x08) << '\n';
 		std::cout << '\n';
 		writeCfg(slot, config | 0x10);
 		writeCfg(slot+1, config | 0x08);

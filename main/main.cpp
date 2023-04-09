@@ -19,13 +19,79 @@ extern const char elf_end[] asm("_binary_main_o_end");
 extern const char elflib_start[] asm("_binary_libtest_so_start");
 extern const char elflib_end[] asm("_binary_libtest_so_end");
 
-void returner() {
+#define EXCAUSE_U_ECALL 8
+#define IVC 64
+// Interrupt vector table if `interruptHandler` is NULL.
+extern "C" size_t interruptVector[IVC];
+size_t interruptVector[IVC] __attribute__((aligned(256)));
+// Interrupt handler if nonnull.
+extern "C" size_t interruptHandler;
+size_t interruptHandler;
+// ECALL handler to use when `exitCookie` is not set.
+extern "C" size_t ecallHandler;
+size_t ecallHandler;
+// When set, intercept ECALL.
+extern "C" bool exitCookie;
+bool exitCookie;
+
+extern "C" void ecallISR();
+const void *ptrptr = (const void *) ecallISR;
+
+// I am going to try to use the user mode.
+// But this isn't working yet.
+void prepUsermode() {
+	// Obtain initial vector setting.
+	size_t vectors;
+	asm volatile ("csrr %0, mtvec" : "=r" (vectors));
+	
+	// Save the vectors for forwarding.
+	if (vectors & 1) {
+		// Vectored mode.
+		memcpy(interruptVector, (void*) (vectors&~3), sizeof(interruptVector));
+		ecallHandler = interruptVector[EXCAUSE_U_ECALL];
+		interruptHandler = 0;
+	} else {
+		// Direct mode.
+		interruptHandler = ecallHandler;
+	}
+	
+	// Clear exit cookie.
+	exitCookie = 0;
+	
+	// // Override settings.
+	// if (vectors & 1) {
+	// 	// Vectored mode.
+	// 	asm volatile ("csrw mtvec, %0" :: "r" ((size_t) interruptVector | 1));
+	// } else {
+		// Direct mode.
+		asm volatile ("csrw mtvec, %0" :: "r" (&ptrptr));
+	// }
+	size_t mtvec;
+	asm volatile ("csrr %0, mtvec" : "=r" (mtvec));
+	// asm volatile ("csrw mtvec, %0" :: "r" (vectors));
+	std::cout << "CSR mtvec:       0x" << std::hex << mtvec << '\n';
+	std::cout << "Desired mtvec:   0x" << ((size_t) interruptVector | 1) << '\n';
+}
+
+// void userCall(void (*callback)()) __attribute__((naked));
+void userCall(void (*callback)()) {
+	// Set exit point thingy.
+	asm volatile ("");
+	// returner:
 	return;
 }
 
 extern "C" void app_main() {
 	esp_log_level_set("elfloader", ESP_LOG_DEBUG);
 	
+	// prepUsermode();
+	
+	size_t mtvec;
+	asm volatile ("csrr %0, mtvec" : "=r" (mtvec));
+	std::cout << "CSR mtvec:       0x" << std::hex << mtvec << '\n';
+	size_t mscratch;
+	asm volatile ("csrr %0, mscratch" : "=r" (mscratch));
+	std::cout << "CSR mscratch:    0x" << std::hex << mscratch << '\n';
 	std::cout << "MPU granularity: 0x" << std::hex << mpu::granularity() << '\n';
 	
 	loader::Linkage prog;

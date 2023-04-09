@@ -66,6 +66,12 @@ struct Region {
 	
 	// Whether this region is active (i.e. being enforced).
 	bool active;
+	
+	// Combines read, write and execute into a single number.
+	// Read is bit 0, write bit 1 and execute bit 2.
+	uint8_t rwx() {
+		return read | (write << 1) | (exec << 2);
+	}
 };
 
 // Determine whether the MPU is currently enabled.
@@ -90,9 +96,9 @@ bool appendRegion(Region wdata);
 std::vector<Region> readRegions();
 
 // Merge regions of the same type into a new list.
-void pureMerge(std::vector<Region> &inout);
+std::vector<Region> pureMerge(const std::vector<Region> &in);
 // Aggressively merge regions, even if that means losing information.
-void lossyMerge(std::vector<Region> &inout);
+std::vector<Region> lossyMerge(const std::vector<Region> &in);
 // Set memory protections based on program headers.
 bool applyPH(const elf::ELFFile &ctx, const elf::Program &program);
 // Set memory protections based on section headers.

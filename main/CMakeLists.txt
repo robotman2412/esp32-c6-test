@@ -1,6 +1,7 @@
 idf_component_register(
     SRCS
         "main.cpp"
+        "ecall.s"
     INCLUDE_DIRS
         "."
         "elfloader/src"

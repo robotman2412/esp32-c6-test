@@ -24,6 +24,9 @@
 
 #include "mpu.hpp"
 
+#include <iostream>
+#include <algorithm>
+
 using namespace elf;
 
 namespace mpu {
@@ -76,13 +79,65 @@ std::vector<Region> readRegions() { return {}; }
 
 
 // Merge regions of the same type into a new list.
-void pureMerge(std::vector<Region> &regions) {
+std::vector<Region> pureMerge(const std::vector<Region> &regions) {
+	std::vector<size_t> boundaries;
+	boundaries.reserve(regions.size() * 2);
 	
-}
-
-// Aggressively merge regions, even if that means losing information.
-void lossyMerge(std::vector<Region> &regions) {
-	pureMerge(regions);
+	// Find all boundaries in the region list.
+	for (const auto &region: regions) {
+		boundaries.push_back(region.base);
+		boundaries.push_back(region.base + region.size);
+	}
+	
+	// Sort and de-duplicate boundaries.
+	std::sort(boundaries.begin(), boundaries.end());
+	for (size_t i = 1; i < boundaries.size();) {
+		if (boundaries[i] == boundaries[i-1]) {
+			boundaries.erase(boundaries.begin() + i);
+		} else {
+			i++;
+		}
+	}
+	
+	// Construct new regions.
+	std::vector<Region> out;
+	out.reserve(boundaries.size()-1);
+	
+	for (size_t i = 0; i < boundaries.size() - 1; i++) {
+		bool present = 0, r = 0, w = 0, x = 0;
+		
+		// Search input ranges for overlap.
+		for (const auto &region: regions) {
+			if (boundaries[i] >= region.base && boundaries[i] < region.base + region.size) {
+				present = true;
+				r |= region.read;
+				w |= region.write;
+				x |= region.exec;
+			}
+		}
+		
+		// Add to the output.
+		if (present) {
+			out.push_back({
+				boundaries[i], boundaries[i+1]-boundaries[i],
+				PRIV_MIN,
+				r, w, x,
+				true
+			});
+		}
+	}
+	
+	// Merge contiguous identical regions.
+	for (size_t i = 1; i < out.size();) {
+		if (out[i-1].rwx() == out[i].rwx() && out[i-1].privilege == out[i].privilege) {
+			out[i-1].size += out[i].size;
+			out.erase(out.begin() + i);
+		} else {
+			i++;
+		}
+	}
+	
+	return out;
 }
 
 // Set memory protections based on program headers.
@@ -108,7 +163,7 @@ bool applyPH(const ELFFile &ctx, const Program &program) {
 		});
 	}
 	
-	pureMerge(tmp);
+	tmp = pureMerge(tmp);
 	
 	for (const auto &region: tmp) {
 		auto res = appendRegion(region);
