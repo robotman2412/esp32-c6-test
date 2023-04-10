@@ -1,6 +1,15 @@
 
 #include <stdio.h>
-// #include <string>
+#include <string>
+#include <memory>
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <bit>
+#include <bitset>
+#include <chrono>
+#include <cmath>
+#include <bit>
 
 struct X {
 	X() {

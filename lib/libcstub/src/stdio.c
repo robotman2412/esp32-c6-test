@@ -60,3 +60,5 @@ void clearerr(FILE *__stream) {}
 int feof(FILE *__stream) { return 0; }
 int ferror(FILE *__stream) { return 0; }
 void perror(const char *__msg) {}
+
+int __printf_chk (int flag, const char *format, ...) {}
