@@ -12,9 +12,13 @@
 
 #include <relocation.hpp>
 #include <mpu.hpp>
+#include <abi.hpp>
 
 extern const char elf_start[] asm("_binary_main_o_start");
 extern const char elf_end[] asm("_binary_main_o_end");
+
+extern const char elf2_start[] asm("_binary_main2_o_start");
+extern const char elf2_end[] asm("_binary_main2_o_end");
 
 extern const char elflib_start[] asm("_binary_libtest_so_start");
 extern const char elflib_end[] asm("_binary_libtest_so_end");
@@ -73,6 +77,43 @@ void prepUsermode() {
 	std::cout << "Desired mtvec:   0x" << ((size_t) interruptVector | 1) << '\n';
 }
 
+
+
+extern "C" void app_main() {
+	// esp_log_level_set("elfloader", ESP_LOG_DEBUG);
+	
+	loader::Linkage prog;
+	abi::exportSymbols(prog.symbols);
+	
+	FILE *elf_fd = fmemopen((void *) elf2_start, elf2_end - elf2_start, "r");
+	auto res = prog.loadExecutable(elf_fd);
+	if (!res) return;
+	
+	auto regions = mpu::readRegions();
+	for (const auto &region: regions) {
+		std::cout << "Region:\n";
+		std::cout << "  Base:   0x" << std::hex << region.base << '\n';
+		std::cout << "  Size:   0x" << region.size << '\n';
+		std::cout << "  RWX:    " << region.read << region.write << region.exec << '\n';
+		std::cout << "  Active: " << region.active << "\n\n";
+	}
+	
+	// Time to run prog.
+	std::cout << "Running program!\n";
+	using EF = int(*)(int, const char **, const char**);
+	EF entry = (EF) prog.entryFunc;
+	const char *envarr[] = {
+		"EVNVVAR=1",
+		NULL
+	};
+	const char *lol = "the_program_lol";
+	int ec = entry(1, &lol, envarr);
+	std::cout << "Exit code 0x" << std::hex << ec << '\n';
+}
+
+
+
+/*
 // void userCall(void (*callback)()) __attribute__((naked));
 void userCall(void (*callback)()) {
 	// Set exit point thingy.
@@ -120,6 +161,7 @@ extern "C" void app_main() {
 	int ec = entry(puts);
 	std::cout << "Exit code 0x" << std::hex << ec << '\n';
 }
+*/
 
 
 
