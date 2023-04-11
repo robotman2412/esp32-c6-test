@@ -21,7 +21,7 @@ project(test1 LANGUAGES C CXX ASM)
 add_compile_options(
 	-march=rv32imac -mabi=ilp32
 	# -nostdinc
-	# -I${CMAKE_CURRENT_LIST_DIR}/../../lib/libcstub/include
+	-I${CMAKE_CURRENT_LIST_DIR}/../../lib/libcstub/include
 	# -I/usr/lib/gcc-cross/riscv64-linux-gnu/9/include
 	# -I/usr/riscv64-linux-gnu/include/c++/9
 	# -I/usr/riscv64-linux-gnu/include/c++/9/riscv64-linux-gnu

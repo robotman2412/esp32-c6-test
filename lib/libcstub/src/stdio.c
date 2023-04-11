@@ -31,6 +31,7 @@ FILE *__get_stderr() {}
 int remove(const char *__path) { return 0; }
 int rename(const char __old, const char *__new) { return 0; }
 FILE *tmpfile() { return NULL; }
+char *tmpnam(char *s) { return NULL; }
 int fclose(FILE *__fd) { return 0; }
 int fflush(FILE *__fd) { return 0; }
 FILE *fopen(const char *_LCS_REST __path, const char *_LCS_REST __mode) { return NULL; }
@@ -45,17 +46,29 @@ int vsnprintf(char *_LCS_REST __buf, size_t __len, const char *_LCS_REST __fmt, 
 int vsprintf(char *_LCS_REST __buf, const char *_LCS_REST __fmt, va_list __vararg) { return 0; }
 int snprintf(char *_LCS_REST __buf, size_t __len, const char *_LCS_REST __fmt, ...) { return 0; }
 int sprintf(char *_LCS_REST __buf, const char *_LCS_REST __fmt, ...) { return 0; }
+int vfscanf(FILE *_LCS_REST __fd, const char *_LCS_REST __fmt, va_list __vararg) { return 0; }
 int fscanf(FILE *_LCS_REST __fd, const char *_LCS_REST __fmt, ...) { return 0; }
+int vscanf(const char *_LCS_REST __fmt, va_list __vararg) { return 0; }
 int scanf(const char *_LCS_REST __fmt, ...) { return 0; }
-int sscanf(const char *_LCS_REST __mem, const char *_LCS_REST __fmt, ...) {return 0; }
+int vsscanf(const char *_LCS_REST __mem, const char *_LCS_REST __fmt, va_list __vararg) { return 0; }
+int sscanf(const char *_LCS_REST __mem, const char *_LCS_REST __fmt, ...) { return 0; }
+char *fgets(char *_LCS_REST __dst, int __len, FILE *_LCS_REST __fd) { return NULL; }
+int fgetc(FILE *__fd) { return 0; }
+int getchar() { return 0; }
+int fread(void *_LCS_REST __ptr, size_t __size, size_t __count, FILE *_LCS_REST __fd) { return 0; }
+int ungetc(int __c, FILE *__fd) { return 0; }
 int fputs(const char *_LCS_REST __buf, FILE *_LCS_REST __fd) { return 0; }
 int puts(const char *_LCS_REST __buf) { return 0; }
-int ungetc(int __c, FILE *__fd) { return 0; }
-int fread(void *_LCS_REST __ptr, size_t __size, size_t __count, FILE *_LCS_REST __fd) { return 0; }
+int fputc(int __c, FILE *__fd) { return 0; }
+int putchar(int __c) { return 0; }
 int fwrite(const void *_LCS_REST __ptr, size_t __size, size_t __count, FILE *_LCS_REST __fd) { return 0; }
+int fgetpos(FILE *_LCS_REST __stream, fpos_t *_LCS_REST __pos) { return 0; }
+int fsetpos(FILE *_LCS_REST __stream, const fpos_t *_LCS_REST __pos) { return 0; }
 int fseek(FILE *__stream, long __off, int __whence) { return 0; }
 long ftell(FILE *__stream) { return 0; }
 void rewind(FILE *__stream) {}
+void setbuf(FILE *_LCS_REST __fd, char *_LCS_REST __buf) {}
+void setvbuf(FILE *_LCS_REST __fd, char *_LCS_REST __buf, int __modes, size_t __len) {}
 void clearerr(FILE *__stream) {}
 int feof(FILE *__stream) { return 0; }
 int ferror(FILE *__stream) { return 0; }
