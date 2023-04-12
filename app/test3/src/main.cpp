@@ -1,6 +1,9 @@
 
 #include <stdio.h>
 
+/*
+All C++ libraries:
+
 #include <algorithm>
 #include <any>
 #include <array>
@@ -59,7 +62,7 @@
 #include <ios>
 #include <iosfwd>
 // Missing linkage:
-// #include <iostream>
+#include <iostream>
 #include <istream>
 #include <iterator>
 #include <latch>
@@ -109,6 +112,88 @@
 #include <variant>
 #include <vector>
 #include <version>
+*/
+
+/*
+Desired C++ libraries:
+
+#include <algorithm>
+#include <array>
+// ? #include <atomic>
+// ? #include <bit>
+// ? #include <bitset>
+// Not working:
+// ? #include <charconv>
+// ? #include <chrono>
+#include <climits>
+#include <cmath>
+// ? #include <compare>
+// ? #include <deque>
+#include <forward_list>
+// Missing defines:
+// #include <fstream>
+#include <functional>
+// ? #include <future>
+#include <initializer_list>
+// Missing linkage:
+#include <iostream>
+#include <istream>
+#include <iterator>
+#include <limits>
+#include <list>
+#include <map>
+#include <memory>
+#include <memory_resource>
+// ? #include <mutex>
+// ? #include <new>
+#include <numbers>
+#include <numeric>
+#include <optional>
+#include <ostream>
+#include <queue>
+// ? #include <random>
+// ? #include <ranges>
+#include <scoped_allocator>
+#include <semaphore>
+#include <set>
+// ? #include <shared_mutex>
+#include <source_location>
+#include <span>
+#include <streambuf>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <variant>
+#include <vector>
+*/
+
+/*
+Absolute minimum C++ libraries:
+
+#include <algorithm> // sort, find, (more?)
+#include <array>
+#include <functional> // function
+#include <fstream>
+#include <initializer_list>
+#include <iostream> // cin, cout, cerr
+#include <istream>
+// ? #include <iterator>
+#include <list> // list
+#include <map> // map
+#include <memory> // (shared_ptr, unique_ptr)
+// ? #include <optional>
+#include <ostream>
+#include <queue> // queue
+#include <set> // set
+#include <string> // basic_string, string
+#include <string_view>
+// ? #include <unordered_map>
+// ? #include <unordered_set>
+#include <vector>
+*/
 
 struct X {
 	X() {
@@ -122,11 +207,7 @@ struct X {
 X myThingy;
 
 int main(int argc, char **argv, char **envp) {
-	for (int i = 0; i < argc; i++) {
-		printf("Arg %d: %s\n", i, argv[i]);
-	}
-	for (int i = 0; envp[i]; i++) {
-		printf("Env %d: %s\n", i, envp[i]);
-	}
+	// std::cout << "This is C++ stream!\n";
+	printf("This is C stream!\n");
 	return 0xcafe;
 }

@@ -8,6 +8,8 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 # Set the C and C++ compilers to use.
+# set(CMAKE_C_COMPILER "/home/julian/.espressif/tools/riscv32-esp-elf/esp-12.2.0_20230208/riscv32-esp-elf/bin/riscv32-esp-elf-gcc")
+# set(CMAKE_CXX_COMPILER "/home/julian/.espressif/tools/riscv32-esp-elf/esp-12.2.0_20230208/riscv32-esp-elf/bin/riscv32-esp-elf-c++")
 set(CMAKE_C_COMPILER "riscv64-linux-gnu-gcc")
 set(CMAKE_CXX_COMPILER "riscv64-linux-gnu-g++")
 # These don't pass built-in cmake test, so disable said test.
@@ -50,6 +52,7 @@ include_directories(
 # Create output file and add sources.
 add_executable(main2.o
 	src/entry.c
+	src/entry.cpp
 	src/main.cpp
 )
 
