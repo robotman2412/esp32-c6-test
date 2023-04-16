@@ -3,6 +3,7 @@ idf_component_register(
         "main.cpp"
         "abi.cpp"
         "ecall.s"
+        "usercall.s"
     INCLUDE_DIRS
         "."
         "elfloader/src"

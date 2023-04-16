@@ -1,0 +1,167 @@
+/*
+	MIT License
+
+	Copyright    (c) 2023 Julian Scheffers
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files    (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+#pragma once
+
+#include <malloc.h>
+#include <string.h>
+
+#include <subcxxbits/arraytype.hpp>
+
+#include <initializer_list>
+
+namespace std {
+
+template <typename _CharT>
+class basic_string {
+	protected:
+		enum { _Localsize = 15 / sizeof(_CharT) };
+		
+		// Pointer to string data.
+		_CharT *__data;
+		// String length.
+		size_t __size;
+		union {
+			// SSO: Local storage.
+			_CharT __local[_Localsize+1];
+			// LSO: Storage capacity.
+			size_t __capacity;
+		};
+		
+		// Determine whether SSO is in use.
+		bool __sso() const {
+			return __data == __local;
+		}
+		// Turn into an SSO.
+		void __to_sso() {
+			auto __tmp = __data;
+			__data = __local;
+			memcpy(__local, __tmp, sizeof(_CharT) * (__size+1));
+			free(__tmp);
+		}
+		// Turn into an LSO.
+		void __to_lso(size_t __cap) {
+			_CharT __tmp = (_CharT *) malloc(sizeof(_CharT) * (__cap + 1));
+			memcpy(__tmp, __local, sizeof(_CharT) * (__size+1));
+			__capacity = __cap;
+			__data = __tmp;
+		}
+		// Check size and double capacity if requirements not met.
+		void __check_size(size_t __len) {
+			if (__sso()) {
+				// Check whether resize is required.
+				if (_Localsize >= __len) return;
+				// Convert SSO to LSO.
+				size_t __cap = 16;
+				while (__cap < __len) __cap *= 2;
+				__to_lso(__cap);
+			} else {
+				// Check whether resize is required.
+				if (__capacity >= __len) return;
+				// Increase LSO capacity.
+				size_t __cap = __capacity;
+				while (__cap < __len) __cap *= 2;
+				__data = (_CharT *) realloc(__data, sizeof(_CharT) * (__cap + 1));
+				__capacity = __cap;
+			}
+		}
+		// Check size and shrink capacity if in large excess.
+		void __shrink() {
+			if (__size <= _Localsize) {
+				__to_sso();
+			} else if (__capacity / 2 >= __size) {
+				__capacity /= 2;
+				__data = (_CharT *) realloc(__data, sizeof(_CharT) * (__capacity + 1));
+			}
+		}
+		
+		// Concatenation implementation.
+		void __concat(const _CharT *__buf, size_t __len) {
+			__check_size(__size + __len);
+			// Add new terminator.
+			__data[__size + __len] = 0;
+			// Copy string data.
+			memcpy(__data + __size, __buf, __len * sizeof(_CharT));
+		}
+		// Concatenation implementation.
+		void __concat(const _CharT *__buf) {
+			// Count length.
+			size_t __len = 0;
+			while (__buf[__len]) __len++;
+			__check_size(__size + __len);
+			// Add new terminator.
+			__data[__size + __len] = 0;
+			// Copy string data.
+			memcpy(__data + __size, __buf, __len * sizeof(_CharT));
+		}
+		// Concatenation implementation.
+		void __concat(const basic_string &__str) { __concat(__str.__data, __str.__size); }
+		// Concatenation implementation.
+		void __concat(_CharT __c) {
+			__check_size(__size + 1);
+			// Append character.
+			__data[__size+1] = 0;
+			__data[__size] = __c;
+			// Mark length change.
+			++__size;
+		}
+		
+	public:
+		// Get data.
+		const _CharT* data() const { return __data; }
+		// Get data.
+		_CharT* data() { return __data; }
+		// Get size.
+		size_t size() const { return __size; }
+		// Get capacity.
+		size_t max_size() const { return __sso() ? _Localsize : __capacity; }
+		
+		// Get c-string representation.
+		_CharT *c_str() { return __data; }
+		// Get c-string representation.
+		const _CharT *c_str() const { return __data; }
+		
+		// Reserve capacity.
+		void reserve(size_t __len) {}
+		// Resize the thing.
+		void resize(size_t __len) {}
+		
+		// Add a character to the back.
+		void push_back(_CharT __c) { __concat(c); }
+		
+		// Add a character to the back.
+		basic_string &operator +=(_CharT __c) { __concat(__c); return *this; }
+		// Add a character to the back.
+		basic_string &operator +=(basic_string __c) { __concat(__c); return *this; }
+		// Add a character to the back.
+		basic_string &operator +=(const _CharT *__c) { __concat(__c); return *this; }
+		// Add a character to the back.
+		basic_string &operator +=(initializer_list<_CharT> __c) { __concat(__c); return *this; }
+		// Add a character to the back.
+		basic_string &operator +=(_CharT __c) { __concat(__c); return *this; }
+};
+
+using string = basic_string<char>;
+
+};

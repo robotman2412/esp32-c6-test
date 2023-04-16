@@ -576,11 +576,6 @@ bool appendRegion(Region wdata) {
 		return false;
 	}
 	
-	// Don't bother if the permissions are RWX.
-	if (wdata.read && wdata.write && wdata.exec) {
-		return true;
-	}
-	
 	// Choose strategy.
 	if (isLong && PMP_TOR_MERGING && readAddr(slot-1) == (wdata.base >> 2)) {
 		// Single-entry TOR strategy.
