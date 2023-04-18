@@ -14,6 +14,8 @@
 #include <mpu.hpp>
 #include <abi.hpp>
 
+#include <kernel.hpp>
+
 extern const char elf_start[] asm("_binary_main_o_start");
 extern const char elf_end[] asm("_binary_main_o_end");
 
@@ -23,133 +25,34 @@ extern const char elf2_end[] asm("_binary_main2_o_end");
 extern const char elflib_start[] asm("_binary_libtest_so_start");
 extern const char elflib_end[] asm("_binary_libtest_so_end");
 
-#define EXCAUSE_U_ECALL 8
-#define IVC 64
-// Interrupt vector table pointer.
-extern "C" size_t interruptPointer;
-size_t interruptPointer;
-// Interrupt handler address.
-extern "C" size_t interruptHandler;
-size_t interruptHandler;
-// ISR handler.
-extern "C" void customISR();
-// Size of ISR handler.
-extern "C" size_t customISRSize;
-
-// Call `func` in user mode.
-typedef void (*funcptr)();
-extern "C" void userCall(funcptr func);
-
-typedef struct __attribute__((packed)) __attribute__((aligned(4))) {
-	uint8_t  opcode   : 7;
-	uint8_t  dest     : 5;
-	uint8_t  imm19_12 : 8;
-	uint8_t  imm11    : 1;
-	uint16_t imm10_1  : 10;
-	uint8_t  imm20    : 1;
-} inst_jal_t;
-static_assert(sizeof(inst_jal_t) == 4, "inst_jal_t must be 4 bytes in size");
-
-typedef struct __attribute__((packed)) __attribute__((aligned(4))) {
-	uint8_t  padd0    : 1;
-	uint16_t imm10_1  : 10;
-	uint8_t  imm11    : 1;
-	uint8_t  imm19_12 : 8;
-	uint8_t  imm20    : 1;
-	uint16_t signext  : 11;
-} jal_off_t;
-static_assert(sizeof(jal_off_t) == 4, "jal_off_t must be 4 bytes in size");
-
-typedef union {
-	inst_jal_t bits;
-	uint32_t   raw;
-} inst_jal_to_u32_t;
-
-typedef union {
-	jal_off_t bits;
-	int32_t   raw;
-} jal_off_to_u32_t;
-
-// Get relative address from RISC-V JAL instruction.
-int32_t readJAL(uint32_t inst) {
-	inst_jal_to_u32_t input  = { .raw = inst };
-	jal_off_to_u32_t  output = {
-		.bits = {
-			.padd0    = 0,
-			.imm10_1  = input.bits.imm10_1,
-			.imm11    = input.bits.imm11,
-			.imm19_12 = input.bits.imm19_12,
-			.imm20    = input.bits.imm20,
-			.signext  = (uint16_t) (input.bits.imm20 ? 0xffff : 0)
-		}
-	};
-	return output.raw;
-}
-
-// Convert relative address to RISC-V JAL instruction.
-uint32_t writeJAL(int32_t offset) {
-	jal_off_to_u32_t  input  = { .raw = offset };
-	inst_jal_to_u32_t output = {
-		.bits = {
-			.opcode = 0x6f, // 1101111
-			.dest   = 0,    // x0
-			.imm19_12 = input.bits.imm19_12,
-			.imm11    = input.bits.imm11,
-			.imm10_1  = input.bits.imm10_1,
-			.imm20    = input.bits.imm20,
-		}
-	};
-	return output.raw;
-}
-
-// I am going to try to use the user mode.
-// But this isn't working yet.
-void prepUsermode() {
-	// Obtain initial vector setting.
-	asm volatile ("csrr %0, mtvec" : "=r" (interruptPointer));
-	std::cout << "CSR mtvec:         0x" << std::hex << interruptPointer << '\n';
-	interruptPointer &= 0xfffffffc;
-	
-	// Read ISR address.
-	uint32_t *instptr = (uint32_t *) interruptPointer;
-	std::cout << "Interrupt handler: 0x" << std::hex << *instptr << '\n';
-	interruptHandler = readJAL(*instptr) + interruptPointer;
-	std::cout << "Interrupt handler: 0x" << std::hex << interruptHandler << '\n';
-	
-	// Copy customISR to RAM.
-	void *mem = malloc(customISRSize);
-	memcpy(mem, (const void*) &customISR, customISRSize);
-	
-	// Write custom ISR address.
-	size_t isrptr = (size_t) mem;
-	*instptr = writeJAL(isrptr - interruptPointer);
-}
-
-int myVariabler = 0;
-void myFunctor() {
-	// std::cout << "HI THER!\n";
-	myVariabler = 123;
-}
 
 
+static kernel::ctx_t kernelCtx;
 
 extern "C" void app_main() {
-	mpu::appendRegion({
-		0, 0x80000000,
-		0,
-		1, 1, 1,
-		1
-	});
+	asm volatile ("mv %0, sp" : "=r" (kernelCtx.m_stack_hi));
+	asm volatile ("mv %0, sp" : "=r" (kernelCtx.m_stack_lo));
+	
+	// mpu::appendRegion({
+	// 	0, 0x80000000,
+	// 	0,
+	// 	1, 1, 1,
+	// 	1
+	// });
 	
 	// esp_log_level_set("elfloader", ESP_LOG_DEBUG);
-	std::cout << "Preparing user mode\n";
-	prepUsermode();
+	std::cout << "Preparing them kernels\n";
+	kernel::init();
+	kernel::initCtx(kernelCtx);
+	kernel::setCtx(&kernelCtx);
+	std::cout << "Kernel ctx: 0x" << std::hex << (size_t) &kernelCtx << '\n';
 	std::cout << "Great success!\n";
-	// asm volatile (" .word 0");
+	asm volatile ("ecall");
+	std::cout << "This is an served interrupter\n";
 	
-	userCall(myFunctor);
-	std::cout << "My variabler: " << std::dec << myVariabler << '\n';
-	return;
+	// userCall(myFunctor);
+	// std::cout << "My variabler: " << std::dec << myVariabler << '\n';
+	// return;
 	
 	loader::Linkage prog;
 	abi::exportSymbols(prog.symbols);

@@ -1,11 +1,12 @@
 idf_component_register(
     SRCS
         "main.cpp"
-        "abi.cpp"
-        "ecall.s"
-        "usercall.s"
+        "abi/abi.cpp"
+        "abi/kernel.cpp"
+        "abi/trap.S"
     INCLUDE_DIRS
         "."
+        "abi"
         "elfloader/src"
     EMBED_FILES
         "../app/test2/build/main.o"

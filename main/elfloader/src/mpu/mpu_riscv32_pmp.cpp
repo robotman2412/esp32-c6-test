@@ -30,7 +30,7 @@
 // PMP region count: either 16 or 64.
 #define PMP_REGIONS 16
 // Lock entries when appending.
-#define PMP_LOCK 1
+#define PMP_LOCK 0
 // Enable TOR merging optimisation.
 #define PMP_TOR_MERGING 1
 
