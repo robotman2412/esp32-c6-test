@@ -72,21 +72,37 @@ extern "C" {
 extern size_t interruptPointer;
 // Interrupt handler address.
 extern size_t interruptHandler;
-// Trap handler.
+// ASM function: Trap handler.
 void customTrap();
 // Size of trap handler.
 extern const size_t customTrapSize;
 
 // ECALL handler.
-// Returns whether the program should continue running.
+// Returns 1 to return to machine mode, 0 to return to user mode.
 bool ecallHandler(int syscall, int a1, int a2, int a3);
 // Generic synchronous trap handler.
-// Returns whether the program should continue running.
+// Returns 1 to return to machine mode, 0 to return to user mode.
 bool trapHandler();
 
 } // extern "C"
 
 namespace kernel {
+
+// Simple function pointer.
+typedef void(*fptr_t)(void);
+
+// System call numbers.
+enum syscall_t {
+	// Usermode: Exit.
+	SYS_EXIT = 512,
+	// Usermode: Call ABI function.
+	SYS_ABICALL,
+	// Machine:  Jump to user mode according to context.
+	SYS_USERJUMP,
+	// Machine:  Create usermode context.
+	// Sets usermode PC to `a1`, SP to `a2` and all other regs to 0.
+	SYS_USERENTER,
+};
 
 // Storage for RISCV PMP entries.
 struct riscv_pmp_t {
@@ -107,7 +123,8 @@ struct ctx_t {
 	riscv_regs_t  u_regs;
 	// Machine:  Registers storage.
 	riscv_regs_t  m_regs;
-	// Scratch data before ISR has read MPP.
+	
+	// Scratch pad for trap handler.
 	uint32_t      scratch[8];
 	
 	// Usermode: Program counter.
@@ -124,8 +141,13 @@ struct ctx_t {
 	// Machine:  Lower stack bound.
 	size_t m_stack_lo;
 	
+	// Usermode: ABI function table.
+	fptr_t *u_abi_table;
+	// Usermode: Size of ABI function table.
+	size_t  u_abi_size;
+	
 	// Usermode: PMP settings.
-	riscv_pmp_t   u_pmp;
+	// riscv_pmp_t   u_pmp;
 	
 	// Program ID.
 	int pid;
@@ -136,6 +158,8 @@ static_assert(offsetof(ctx_t, m_regs) == 128, "offset of m_regs must be 256");
 static_assert(offsetof(ctx_t, scratch) == 256, "offset of scratch must be 256");
 static_assert(offsetof(ctx_t, u_pc) == 288, "offset of u_pc must be 288");
 static_assert(offsetof(ctx_t, m_pc) == 292, "offset of m_pc must be 292");
+static_assert(offsetof(ctx_t, u_abi_table) == 312, "offset of u_abi_table must be 308");
+static_assert(offsetof(ctx_t, u_abi_size) == 316, "offset of u_abi_size must be 312");
 
 // Store all registers.
 static inline void storeRegisters(riscv_regs_t *storage) __attribute__((always_inline));
@@ -182,9 +206,14 @@ static inline int mhartid() {
 
 // Do all generic setup required for user mode.
 void init();
-// Initialise a context.
-void initCtx(ctx_t &ctx);
 // Set active context.
 void setCtx(ctx_t *ctx);
+
+}
+
+extern "C" {
+
+// ASM function: ABI call implementation.
+void makeABICall(kernel::ctx_t *ctx, kernel::fptr_t fptr);
 
 }

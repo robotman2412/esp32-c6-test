@@ -1,3 +1,30 @@
+/*
+	MIT License
+
+	Copyright    (c) 2023 Julian Scheffers
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files    (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+#include "kernel_include.S"
+
+
 
 	# Address of default interrupt handler.
 	.global interruptHandler
@@ -5,67 +32,6 @@
 	.global ecallHandler
 	# Trap handler function.
 	.global trapHandler
-	# Get registers storage for current thread.
-	.global getRegisterStorage
-
-// Whether to preserve callee-saved registers.
-#define PRESERVE_CALLEE_SAVE
-// Whether to forward non-ecall traps from U-mode.
-// #define FORWARD_NON_ECALL_U_TRAPS
-// Whether to forward non-ecall traps from M-mode.
-#define FORWARD_NON_ECALL_M_TRAPS
-
-	# Named register indicies in registers struct.
-	.equ rs_ra,  4
-	.equ rs_sp,  8
-	.equ rs_gp,  12
-	.equ rs_tp,  16
-	.equ rs_t0,  20
-	.equ rs_t1,  24
-	.equ rs_t2,  28
-	.equ rs_s0,  32
-	.equ rs_s1,  36
-	.equ rs_a0,  40
-	.equ rs_a1,  44
-	.equ rs_a2,  48
-	.equ rs_a3,  52
-	.equ rs_a4,  56
-	.equ rs_a5,  60
-	.equ rs_a6,  64
-	.equ rs_a7,  68
-	.equ rs_s2,  72
-	.equ rs_s3,  76
-	.equ rs_s4,  80
-	.equ rs_s5,  84
-	.equ rs_s6,  88
-	.equ rs_s7,  92
-	.equ rs_s8,  96
-	.equ rs_s9,  100
-	.equ rs_s10, 104
-	.equ rs_s11, 108
-	.equ rs_t3,  112
-	.equ rs_t4,  116
-	.equ rs_t5,  120
-	.equ rs_t6,  124
-
-	# Offset of u_reg in ctx_t.
-	.equ ctx_u_reg, 0
-	# Offset of m_reg in ctx_t.
-	.equ ctx_m_reg, 128
-	# Offset of u_pc in ctx_t.
-	.equ ctx_u_pc,  288
-	# Offset of u_pc in ctx_t.
-	.equ ctx_m_pc,  292
-
-	# Offset of scratch in ctx_t.
-	.equ ctx_scratch_0, 256
-	.equ ctx_scratch_1, 260
-	.equ ctx_scratch_2, 264
-	.equ ctx_scratch_3, 268
-	.equ ctx_scratch_4, 272
-	.equ ctx_scratch_5, 276
-	.equ ctx_scratch_6, 280
-	.equ ctx_scratch_7, 284
 
 
 
@@ -74,17 +40,17 @@
 	.type customTrap, %function
 	.text
 	.align 2
-	.option arch, -c
 customTrap:
 	# Preserve tempregs.
-	csrrw t0, mscratch, t0
+	csrrw t0, mscratch, t0   # ctx in t0,  prev. t0 in mscratch
 	sw t1, ctx_scratch_1(t0)
 	sw t2, ctx_scratch_2(t0)
 	sw t3, ctx_scratch_3(t0)
-	csrrw t1, mscratch, t0
-	sw t0, ctx_scratch_0(t0)
+	csrrw t1, mscratch, t0   # prev. t0 in t1,  ctx in mscratch
+	sw t1, ctx_scratch_0(t0)
 	
 	# Jump to handler.
+	.option arch, -c
 	auipc t1, 0
 	lw t1, 12(t1)
 	jr t1
@@ -174,12 +140,19 @@ customTrap0:
 	sw t5, rs_t5(t3)
 	sw t6, rs_t6(t3)
 	
-	# Check for ecall.
+	# Load bare minimum machine regs.
+	lw sp, ctx_m_reg_sp(t0)
+	lw gp, ctx_m_reg_gp(t0)
+	lw tp, ctx_m_reg_tp(t0)
+	
+	# Check for ECALL.
 	csrr t1, mcause
+	# Check for ECALL from U-mode.
 	li t2, 8
-	beq t1, t2, .handleEcall
+	beq t1, t2, .uhandleEcall
+	# Check for ECALL from M-mode.
 	li t2, 11
-	beq t1, t2, .handleEcall
+	beq t1, t2, .mhandleEcall
 	
 	# Forward trap.
 	csrr t1, mstatus
@@ -188,18 +161,65 @@ customTrap0:
 	beq x0, t1, .uforward
 	j .mforward
 	
-.handleEcall:
-	# Handle environment call.
-	lw t1, ctx_scratch_5(t0)
+.uhandleEcall:
+	# Handle environment call from M-mode.
+	lw t1, ctx_u_pc(t0)
 	addi t1, t1, 4
+	sw t1, ctx_u_pc(t0)
 	sw t1, ctx_scratch_5(t0)
 	jal ra, ecallHandler
+	
+	# Determine privilege mode to return to.
+	csrr t0, mscratch
+	bne x0, a0, .mrestore
+	j .urestore
+	
+.mhandleEcall:
+	# Handle environment call from M-mode.
+	lw t1, ctx_m_pc(t0)
+	addi t1, t1, 4
+	sw t1, ctx_m_pc(t0)
+	sw t1, ctx_scratch_5(t0)
+	jal ra, ecallHandler
+	
+.checkRestore:
+	# Determine privilege mode to return to.
+	csrr t0, mscratch
+	bne x0, a0, .mrestore
+	# j .urestore
+	
+.urestore:
+	# Set restore context to U-mode.
+	addi t3, t0, ctx_u_reg
+	# Set MPP to 0.
+	li t1, 0xffffe7ff
+	lw t2, ctx_scratch_4(t0)
+	and t1, t2, t1
+	sw t1, ctx_scratch_4(t0)
+	# Set new PC.
+	lw t1, ctx_u_pc(t0)
+	sw t1, ctx_scratch_5(t0)
+	# Restore context.
+	j .restore
+	
+.mrestore:
+	# Set restore context to M-mode.
+	addi t3, t0, ctx_m_reg
+	# Set MPP to 3.
+	li t1, 0x00001800
+	lw t2, ctx_scratch_4(t0)
+	or t1, t2, t1
+	sw t1, ctx_scratch_4(t0)
+	# Set new PC.
+	lw t1, ctx_m_pc(t0)
+	sw t1, ctx_scratch_5(t0)
+	# Restore context.
 	j .restore
 	
 .mforward:
 #ifdef FORWARD_NON_ECALL_M_TRAPS
 	# Modify return address.
-	la t1, .restore
+	la t1, .mrestore
 	csrw mepc, t1
 	li t1, 0x1800
 	csrs mstatus, t1
@@ -211,13 +231,13 @@ customTrap0:
 	# Handle trap.
 	la ra, trapHandler
 	jalr ra, ra
-	j .restore
+	j .checkRestore
 #endif
 	
 .uforward:
 #ifdef FORWARD_NON_ECALL_U_TRAPS
 	# Modify return address.
-	la t1, .restore
+	la t1, .urestore
 	csrw mepc, t1
 	li t1, 0x1800
 	csrs mstatus, t1
@@ -229,14 +249,10 @@ customTrap0:
 	# Handle trap.
 	la ra, trapHandler
 	jalr ra, ra
-	# j .restore
+	j .checkRestore
 #endif
 	
 .restore:
-	# Get context pointers again (they were in caller-save registers).
-	csrr t0, mscratch
-	lw t3, ctx_scratch_6(t0)
-	
 	# Restore return address.
 	lw t1, ctx_scratch_5(t0)
 	csrw mepc, t1
@@ -277,12 +293,12 @@ customTrap0:
 	lw t6, rs_t6(t3)
 	
 	# Restore tempregs.
-	lw t1, ctx_scratch_0(t0)
-	csrw mscratch, t1
+	lw t1, ctx_scratch_0(t0) # prev. t0 in t1
+	csrw mscratch, t1        # prev. t0 in mscratch
 	lw t3, ctx_scratch_3(t0)
 	lw t2, ctx_scratch_2(t0)
 	lw t1, ctx_scratch_1(t0)
-	csrrs t0, mscratch, t0
+	csrrw t0, mscratch, t0   # prev. to in t0,  ctx in mscratch
 	
 	# Return from interrupt.
 	mret

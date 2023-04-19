@@ -29,30 +29,70 @@ extern const char elflib_end[] asm("_binary_libtest_so_end");
 
 static kernel::ctx_t kernelCtx;
 
+int cookie = 0;
+
+void setTheCookie(int to) {
+	std::cout << "Set cookie: " << std::dec << to << '\n';
+	cookie = to;
+}
+
+extern "C" void exitUserMode() __attribute__((naked)) __attribute__((noreturn));
+void exitUserMode() {
+	asm volatile("li a0, 512");
+	asm volatile("ecall");
+}
+
+extern "C" void userCode() __attribute__((naked));
+void userCode() {
+	// Manual write of cookie.
+	asm volatile("li t0, 1234");
+	asm volatile("sw t0, cookie, t1");
+	// ABI call write of cookie.
+	asm volatile("li t0, 5678");
+	asm volatile("li a0, 513");
+	asm volatile("li a1, 0");
+	asm volatile("ecall");
+	// Exit.
+	asm volatile("li a0, 512");
+	asm volatile("ecall");
+}
+
+extern "C" void goToMyUserCode() __attribute__((naked));
+void goToMyUserCode() {
+	asm volatile("li a0, 515");
+	asm volatile("la a1, userCode");
+	asm volatile("la a2, userStack");
+	asm volatile("li t0, 4096");
+	asm volatile("add a2, a2, t0");
+	asm volatile("ecall");
+	asm volatile("ret");
+}
+
+extern "C" uint32_t userStack[];
+uint32_t userStack[1024];
+
 extern "C" void app_main() {
-	asm volatile ("mv %0, sp" : "=r" (kernelCtx.m_stack_hi));
-	asm volatile ("mv %0, sp" : "=r" (kernelCtx.m_stack_lo));
-	
 	// mpu::appendRegion({
-	// 	0, 0x80000000,
+	// 	0, 0x100000000,
 	// 	0,
 	// 	1, 1, 1,
 	// 	1
 	// });
 	
+	kernel::fptr_t abi[] = {
+		(kernel::fptr_t) &setTheCookie
+	};
+	
 	// esp_log_level_set("elfloader", ESP_LOG_DEBUG);
 	std::cout << "Preparing them kernels\n";
 	kernel::init();
-	kernel::initCtx(kernelCtx);
 	kernel::setCtx(&kernelCtx);
+	kernelCtx.u_abi_table = abi;
+	kernelCtx.u_abi_size  = sizeof(abi) / sizeof(kernel::fptr_t);
 	std::cout << "Kernel ctx: 0x" << std::hex << (size_t) &kernelCtx << '\n';
-	std::cout << "Great success!\n";
-	asm volatile ("ecall");
-	std::cout << "This is an served interrupter\n";
-	
-	// userCall(myFunctor);
-	// std::cout << "My variabler: " << std::dec << myVariabler << '\n';
-	// return;
+	goToMyUserCode();
+	std::cout << "Cookie: " << std::dec << cookie << '\n';
+	return;
 	
 	loader::Linkage prog;
 	abi::exportSymbols(prog.symbols);

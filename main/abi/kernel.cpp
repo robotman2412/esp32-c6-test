@@ -1,3 +1,26 @@
+/*
+	MIT License
+
+	Copyright    (c) 2023 Julian Scheffers
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files    (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
 
 #include "kernel.hpp"
 #include <iostream>
@@ -91,15 +114,58 @@ static void regdump(const riscv_regs_t *regs, unsigned long pc) {
 } // namespace kernel
 
 // ECALL handler.
-// Returns whether the program should continue running.
+// Returns 1 to return to machine mode, 0 to return to user mode.
 bool ecallHandler(int syscall, int a1, int a2, int a3) {
 	using namespace kernel;
-	std::cout << "ECALL! (but i ignored it lol)\n";
-	return true;
+	
+	uint32_t mstatus;
+	asm ("csrr %0, mstatus" : "=r" (mstatus));
+	ctx_t *ctx;
+	asm ("csrr %0, mscratch" : "=r" (ctx));
+	
+	switch ((syscall_t) syscall) {
+		default:
+			std::cout << "Unimplemented system call 0x" << std::hex << syscall << '\n';
+			if (mstatus & 0x00001800) {
+				// TODO: Create abort function.
+			} else {
+				std::cout << "Terminating process " << ctx->pid << '\n';
+			}
+			return 0;
+		
+		case syscall_t::SYS_ABICALL:
+			if (a1 >= 0 && a1 < ctx->u_abi_size) {
+				std::cout << "ABI call #" << std::dec << a1 << '\n';
+				makeABICall(ctx, ctx->u_abi_table[a1]);
+				return 0;
+			} else {
+				std::cout << "Unimplemented ABI call #" << std::dec << a1 << '\n';
+				std::cout << "Terminating process " << ctx->pid << '\n';
+				return 1;
+			}
+		
+		case syscall_t::SYS_EXIT:
+			// Simply jump back to machine mode.
+			return 1;
+		
+		case syscall_t::SYS_USERJUMP:
+			// Extremely simple jump to user mode.
+			return 0;
+		
+		case syscall_t::SYS_USERENTER:
+			// Create usermode context.
+			memset(&ctx->u_regs, 0, sizeof(ctx->u_regs));
+			ctx->u_pc      = a1;
+			ctx->u_regs.sp = a2;
+			// ctx->u_regs.gp = ctx->m_regs.gp;
+			// ctx->u_regs.tp = ctx->m_regs.tp;
+			// Have trap handler return to user mode.
+			return 0;
+	}
 }
 
 // Generic synchronous trap handler.
-// Returns whether the program should continue running.
+// Returns 1 to return to machine mode, 0 to return to user mode.
 bool trapHandler() {
 	using namespace kernel;
 	
@@ -143,11 +209,14 @@ bool trapHandler() {
 	if (mstatus & 0x00001800) {
 		// It was the kernel.
 		regdump(&ctx->m_regs, ctx->m_pc);
+		// TODO: Create abort function.
 	} else {
 		// It was a process.
 		regdump(&ctx->u_regs, ctx->u_pc);
 	}
-	return false;
+	
+	// Return to M-mode.
+	return 1;
 }
 
 
@@ -208,13 +277,6 @@ void init() {
 	// Write custom ISR address.
 	size_t isrptr = (size_t) mem;
 	*instptr = writeJAL(isrptr - interruptPointer);
-}
-
-// Initialise a context.
-void initCtx(ctx_t &ctx) {
-	// Set x0 registers to 0 just in case.
-	ctx.u_regs.arr[0] = 0;
-	ctx.m_regs.arr[0] = 0;
 }
 
 // Set active context.
