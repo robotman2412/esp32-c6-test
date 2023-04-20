@@ -33,34 +33,36 @@ int cookie = 0;
 
 void setTheCookie(int to) {
 	std::cout << "Set cookie: " << std::dec << to << '\n';
+	// for (int i = 0; i < 100000; i++) { asm volatile ("nop"); }
 	cookie = to;
-}
-
-extern "C" void exitUserMode() __attribute__((naked)) __attribute__((noreturn));
-void exitUserMode() {
-	asm volatile("li a0, 512");
-	asm volatile("ecall");
 }
 
 extern "C" void userCode() __attribute__((naked));
 void userCode() {
-	// Manual write of cookie.
-	asm volatile("li t0, 1234");
-	asm volatile("sw t0, cookie, t1");
-	// ABI call write of cookie.
-	asm volatile("li t0, 5678");
-	asm volatile("li a0, 513");
-	asm volatile("li a1, 0");
-	asm volatile("ecall");
+	// Manual write of cookie variable.
+	asm volatile("li t0, 1234"); /* New value of cookie */
+	asm volatile("sw t0, cookie, t1"); /* Write to cookie variable using register t1 as address scratch */
+	
+	// Stall forever, but in assembly.
+	// This causes the IWDT to run out,
+	// which in turn resets the PRO CPU.
+	asm volatile(".funny:\nj .funny");
+	
+	// ABI call write of cookie variable.
+	asm volatile("li t0, 5678"); /* New value of cookie */
+	asm volatile("li a0, 513"); /* Systemcall: Make ABI call */
+	asm volatile("li a1, 0"); /* ABI call: function index (setTheCookie) */
+	asm volatile("ecall"); /* Perform system call */
+	
 	// Exit.
-	asm volatile("li a0, 512");
+	asm volatile("li a0, 512"); /* Systemcall: Exit */
 	asm volatile("ecall");
 }
 
 extern "C" void goToMyUserCode() __attribute__((naked));
-void goToMyUserCode() {
+void goToMyUserCode(kernel::fptr_t functor) {
+	asm volatile("mv a1, a0");
 	asm volatile("li a0, 515");
-	asm volatile("la a1, userCode");
 	asm volatile("la a2, userStack");
 	asm volatile("li t0, 4096");
 	asm volatile("add a2, a2, t0");
@@ -72,27 +74,41 @@ extern "C" uint32_t userStack[];
 uint32_t userStack[1024];
 
 extern "C" void app_main() {
-	// mpu::appendRegion({
-	// 	0, 0x100000000,
-	// 	0,
-	// 	1, 1, 1,
-	// 	1
-	// });
+	// Allow user-mode read-write-execute access to all of memory.
+	mpu::appendRegion({
+		0, 0x100000000,
+		0,
+		1, 1, 1,
+		1
+	});
 	
+	// Table of system calls.
 	kernel::fptr_t abi[] = {
 		(kernel::fptr_t) &setTheCookie
 	};
 	
-	// esp_log_level_set("elfloader", ESP_LOG_DEBUG);
+	// Install custom trap handler.
 	std::cout << "Preparing them kernels\n";
 	kernel::init();
 	kernel::setCtx(&kernelCtx);
+	
+	// Install table of system calls.
 	kernelCtx.u_abi_table = abi;
 	kernelCtx.u_abi_size  = sizeof(abi) / sizeof(kernel::fptr_t);
 	std::cout << "Kernel ctx: 0x" << std::hex << (size_t) &kernelCtx << '\n';
-	goToMyUserCode();
+	
+	// Run the user-mode program.
+	goToMyUserCode(userCode);
 	std::cout << "Cookie: " << std::dec << cookie << '\n';
+	
 	return;
+	
+	
+	/*
+	kernel::init();
+	kernel::setCtx(&kernelCtx);
+	kernelCtx.u_abi_table = abi::getAbiTable();
+	kernelCtx.u_abi_size  = abi::getAbiTableSize();
 	
 	loader::Linkage prog;
 	abi::exportSymbols(prog.symbols);
@@ -112,15 +128,18 @@ extern "C" void app_main() {
 	
 	// Time to run prog.
 	std::cout << "Running program!\n";
-	using EF = int(*)(int, const char **, const char**);
-	EF entry = (EF) prog.entryFunc;
-	const char *envarr[] = {
-		"EVNVVAR=1",
-		NULL
-	};
-	const char *lol = "the_program_lol";
-	int ec = entry(1, &lol, envarr);
-	std::cout << "Exit code 0x" << std::hex << ec << '\n';
+	goToMyUserCode((kernel::fptr_t) prog.entryFunc);
+	std::cout << "Done!\n";
+	// using EF = int(*)(int, const char **, const char**);
+	// EF entry = (EF) prog.entryFunc;
+	// const char *envarr[] = {
+	// 	"EVNVVAR=1",
+	// 	NULL
+	// };
+	// const char *lol = "the_program_lol";
+	// int ec = entry(1, &lol, envarr);
+	// std::cout << "Exit code 0x" << std::hex << ec << '\n';
+	*/
 }
 
 

@@ -40,6 +40,14 @@
 extern "C" {
 #endif
 
+// Exit without running any of the exit handlers.
+static inline void _exit(int ec) __attribute__((naked)) __attribute__((noreturn));
+static inline void _exit(int ec) {
+	asm volatile ("mv a1, a0");
+	asm volatile ("li a0, 512");
+	asm volatile ("ecall");
+}
+
 // Convert a c-string `__src` to a double.
 extern double atof(const char *__src)
 	__attribute__((pure)) __attribute__((__nonnull__(1)));

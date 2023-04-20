@@ -292,6 +292,10 @@ customTrap0:
 	lw t5, rs_t5(t3)
 	lw t6, rs_t6(t3)
 	
+	# Enable interrupts.
+	li t1, 0x00000088
+	csrs mstatus, t1
+	
 	# Restore tempregs.
 	lw t1, ctx_scratch_0(t0) # prev. t0 in t1
 	csrw mscratch, t1        # prev. t0 in mscratch

@@ -5,6 +5,7 @@ idf_component_register(
         "abi/kernel.cpp"
         "abi/trap.S"
         "abi/abicall.S"
+        "abi/abiwrapper.S"
     INCLUDE_DIRS
         "."
         "abi"

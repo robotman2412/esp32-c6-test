@@ -197,6 +197,24 @@ static inline void storeRegisters(riscv_regs_t *storage) {
 	asm volatile ("sw x31, %0" : "=m" (storage->x31));
 }
 
+// Enable interrupts.
+static inline void enableInterrupts() __attribute__((always_inline));
+static inline void enableInterrupts() {
+	asm volatile (
+		"li t0, 0x00000008\n"
+		"csrs mstatus, t0"
+	);
+}
+
+// Disable interrupts.
+static inline void disableInterrupts() __attribute__((always_inline));
+static inline void disableInterrupts() {
+	asm volatile (
+		"li t0, 0x00000008\n"
+		"csrs mstatus, t0"
+	);
+}
+
 // Machine mode instruction: Get current HART id.
 static inline int mhartid() {
 	int id;

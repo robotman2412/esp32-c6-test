@@ -25,11 +25,11 @@ static size_t num_exit_entries = 0;
 int __cxa_atexit(exit_func_t callback, void *arg, void *dso_handle) {
 	num_exit_entries ++;
 	void *mem = realloc(exit_entries, num_exit_entries * sizeof(exit_entry_t));
-	// if (!mem) abort();
-	exit_entries = mem;
-	exit_entries[num_exit_entries-1] = (exit_entry_t) {
-		callback, arg
-	};
+	// // if (!mem) abort();
+	// exit_entries = mem;
+	// exit_entries[num_exit_entries-1] = (exit_entry_t) {
+	// 	callback, arg
+	// };
 }
 
 // Copy of `envp` from main.
@@ -54,16 +54,22 @@ int _start(int argc, char **argv, char **envp) {
 	
 	// Run global constructors.
 	for (init_func_t *i = __start_init_array; i != __stop_init_array; i++) {
-		(*i)();
+		// (*i)();
+		// malloc(0);
 	}
 	
 	int retval = main(argc, argv, envp);
 	
 	// Run global deconstructors.
-	for (size_t i = 0; i < num_exit_entries; i++) {
-		exit_entries[i].func(exit_entries[i].arg);
-	}
-	free(exit_entries);
+	// for (size_t i = 0; i < num_exit_entries; i++) {
+		// exit_entries[i].func(exit_entries[i].arg);
+	// }
+	// free(exit_entries);
 	
-	return retval;
+	puts("Exit time.");
+	
+	asm volatile(
+		"  li a0, 512\n"
+		"  ecall"
+	);
 }

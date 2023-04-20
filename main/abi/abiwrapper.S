@@ -26,68 +26,25 @@
 
 
 
-	# ABI call implementation.
-	# Context in `a0`, function pointer in `a1`.
-	.global makeABICall
-	.type makeABICall, %function
-	.text
+	# ABI call wrapper.
+	# This is a template for the function called from user mode to generate an ABI call.
+	.global abiCallTemplate
+	.global abiCallTemplateEnd
+	.section ".rodata"
 	.align 2
-makeABICall:
-	# Preserve the s* registers.
-	addi sp, sp, -32
-	sw s0, 16(sp)
-	sw s1, 12(sp)
-	sw s2, 8(sp)
-	sw s3, 4(sp)
-	sw s4, 0(sp)
-	
-	# Preserve registers in a slightly unusual location.
-	mv s0, ra
-	mv s1, sp
-	mv s2, gp
-	mv s3, tp
-	
-	# Rearrange arguments.
-	mv ra, a1
-	mv s4, a0
-	lw a0, rs_t0(s4)
-	lw a1, rs_t1(s4)
-	lw a2, rs_a2(s4)
-	lw a3, rs_a3(s4)
-	lw a4, rs_a4(s4)
-	lw a5, rs_a5(s4)
-	lw a6, rs_a6(s4)
-	lw a7, rs_a7(s4)
-	
-	# Get environment registers.
-	lw sp, rs_sp(s4)
-	lw gp, rs_gp(s4)
-	lw tp, rs_tp(s4)
-	
-	# Perform call.
-	li t0, 0x00000008
-	csrs mstatus, t0
-	jalr ra
-	
-	# Store return value.
-	sw a0, rs_a0(s4)
-	sw a1, rs_a1(s4)
-	li t0, 0x00000008
-	csrc mstatus, t0
-	
-	# Restore registers.
-	mv ra, s0
-	mv sp, s1
-	mv gp, s2
-	mv tp, s3
-	
-	# Restore the s* registers.
-	lw s0, 16(sp)
-	lw s1, 12(sp)
-	lw s2, 8(sp)
-	lw s3, 4(sp)
-	lw s4, 0(sp)
-	addi sp, sp, 32
-	
-	# Return.
-	ret
+abiCallTemplate:
+	# Preserve first two argument words.
+	mv t0, a0
+	mv t1, a1
+	# Make system call.
+	.align 2
+	.option arch, -c
+	li a0, sys_u_abicall
+	auipc a1, 0
+	lw a1, 16(a1)
+	ecall
+	# Return from this functor.
+	jr ra
+	.option arch, +c
+	# Here, the system call number is appended.
+abiCallTemplateEnd:

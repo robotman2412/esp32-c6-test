@@ -28,16 +28,49 @@
 #include <stdio.h>
 #include <string.h>
 
+extern "C" const char abiCallTemplate[];
+extern "C" const char abiCallTemplateEnd[];
+
 namespace abi {
 
+static elf::SymMap cache;
+static std::vector<kernel::fptr_t> abiTable;
+
+// Generates an ABI call wrapper function.
+static void *writeABIWrapper(int abiIndex) {
+	// Allocate an memories.
+	size_t len = abiCallTemplateEnd - abiCallTemplate;
+	size_t cap = len + sizeof(int);
+	void  *mem = malloc(cap);
+	if (!mem) return nullptr;
+	
+	// Copy in the generic.
+	memcpy(mem, (const void *) abiCallTemplate, len);
+	// Copy in the INDEX WORD.
+	uint32_t *indexPtr = (uint32_t *) (len + (size_t) mem);
+	*indexPtr = abiIndex;
+	
+	// Done!
+	return mem;
+}
+
+static void initCache() {
+	exportSymbolsUnwrapped(cache);
+	for (auto &entry: cache) {
+		auto fptr = entry.second;
+		entry.second = (size_t) writeABIWrapper(abiTable.size());
+		abiTable.push_back((kernel::fptr_t) fptr);
+	}
+}
+
 // Called when an app aborts.
-void appAborted() {
+static void appAborted() {
 	printf("App aborted!\n");
 	abort();
 }
 
 // Exports ABI symbols into `map`.
-void exportSymbols(elf::SymMap &map) {
+void exportSymbolsUnwrapped(elf::SymMap &map) {
 	// From malloc.h:
 	map["malloc"]  = (size_t) &malloc;
 	map["free"]    = (size_t) &free;
@@ -131,6 +164,25 @@ void exportSymbols(elf::SymMap &map) {
 	map["strlen"]     = (size_t) &strlen;
 	map["strnlen"]    = (size_t) &strnlen;
 	map["strerror"]   = (size_t) &strerror;
+}
+
+
+// Get the ABI TABLE.
+kernel::fptr_t *getAbiTable() {
+	if (!cache.size()) initCache();
+	return abiTable.data();
+}
+
+// Get the size of the ABI TABLE.
+size_t getAbiTableSize() {
+	if (!cache.size()) initCache();
+	return abiTable.size();
+}
+
+// Exports ABI symbols into `map`.
+void exportSymbols(elf::SymMap &map) {
+	if (!cache.size()) initCache();
+	map.merge(cache);
 }
 
 } // namespace abi

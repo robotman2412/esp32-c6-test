@@ -29,6 +29,12 @@
 // Whether to forward non-ecall traps from M-mode.
 #define FORWARD_NON_ECALL_M_TRAPS
 
+	# System call numbers.
+	.equ sys_u_exit, 512
+	.equ sys_u_abicall, 513
+	.equ sys_m_userjump, 514
+	.equ sys_m_userenter, 515
+
 	# Named register indicies in registers struct.
 	.equ rs_ra,  4
 	.equ rs_sp,  8

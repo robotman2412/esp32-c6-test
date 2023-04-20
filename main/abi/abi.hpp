@@ -26,10 +26,18 @@
 
 #include <elfloader.hpp>
 #include <relocation.hpp>
+#include <kernel.hpp>
 
 namespace abi {
 
-// Exports ABI symbols into `map`.
+// Get the ABI TABLE.
+kernel::fptr_t *getAbiTable();
+// Get the size of the ABI TABLE.
+size_t getAbiTableSize();
+
+// Exports ABI symbols into `map` (with wrapper).
 void exportSymbols(elf::SymMap &map);
+// Exports ABI symbols into `map` (no wrapper).
+void exportSymbolsUnwrapped(elf::SymMap &map);
 
 }
