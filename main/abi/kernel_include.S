@@ -22,12 +22,12 @@
 	SOFTWARE.
 */
 
-// Whether to preserve callee-saved registers.
-#define PRESERVE_CALLEE_SAVE
 // Whether to forward non-ecall traps from U-mode.
 // #define FORWARD_NON_ECALL_U_TRAPS
 // Whether to forward non-ecall traps from M-mode.
-#define FORWARD_NON_ECALL_M_TRAPS
+// #define FORWARD_NON_ECALL_M_TRAPS
+// Whether to use a dual M-mode system instead of an M-mode, U-mode system.
+// #define DUAL_M_MODE
 
 	# System call numbers.
 	.equ sys_u_exit, 512
@@ -142,6 +142,9 @@
 	.equ ctx_u_pc,  288
 	# Offset of u_pc in ctx_t.
 	.equ ctx_m_pc,  292
+	
+	# Offset of priv_is_m in ctx_t.
+	.equ ctx_is_super, 320
 
 	# Offset of scratch in ctx_t.
 	.equ ctx_scratch_0, 256
@@ -154,4 +157,4 @@
 	.equ ctx_scratch_7, 284
 	
 	# Offset of u_abi_table in ctx_t.
-	.equ ctx_abi_table, 308
+	.equ ctx_abi_table, 312

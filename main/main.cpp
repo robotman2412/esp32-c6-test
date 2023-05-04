@@ -44,8 +44,6 @@ void userCode() {
 	asm volatile("sw t0, cookie, t1"); /* Write to cookie variable using register t1 as address scratch */
 	
 	// Stall forever, but in assembly.
-	// This causes the IWDT to run out,
-	// which in turn resets the PRO CPU.
 	asm volatile(".funny:\nj .funny");
 	
 	// ABI call write of cookie variable.

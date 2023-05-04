@@ -92,6 +92,8 @@ static void regdump(const riscv_regs_t *regs, unsigned long pc) {
 	asm ("csrr %0, mcause" : "=r" (mcause));
 	long mscratch;
 	asm ("csrr %0, mscratch" : "=r" (mscratch));
+	long mepc;
+	asm ("csrr %0, mepc" : "=r" (mepc));
 	
 	// Announce register dump.
 	printf("Core %ld register dump:\n", mhartid);
@@ -109,6 +111,7 @@ static void regdump(const riscv_regs_t *regs, unsigned long pc) {
 	printf("MTVEC:    0x%08lx\n", mtvec);
 	printf("MCAUSE:   0x%08lx\n", mcause);
 	printf("MSCRATCH: 0x%08lx\n", mscratch);
+	printf("MEPC:     0x%08lx\n", mepc);
 }
 
 } // namespace kernel
@@ -118,17 +121,17 @@ static void regdump(const riscv_regs_t *regs, unsigned long pc) {
 bool ecallHandler(int syscall, int a1, int a2, int a3) {
 	using namespace kernel;
 	
-	uint32_t mstatus;
-	asm ("csrr %0, mstatus" : "=r" (mstatus));
 	ctx_t *ctx;
 	asm ("csrr %0, mscratch" : "=r" (ctx));
 	
 	switch ((syscall_t) syscall) {
 		default:
 			std::cout << "Unimplemented system call 0x" << std::hex << syscall << '\n';
-			if (mstatus & 0x00001800) {
-				// TODO: Create abort function.
+			if (ctx->is_super) {
+				regdump(&ctx->m_regs, ctx->m_pc);
+				panic();
 			} else {
+				regdump(&ctx->u_regs, ctx->u_pc);
 				std::cout << "Terminating process " << ctx->pid << '\n';
 			}
 			return 0;
@@ -140,7 +143,13 @@ bool ecallHandler(int syscall, int a1, int a2, int a3) {
 				return 0;
 			} else {
 				std::cout << "Unimplemented ABI call #" << std::dec << a1 << '\n';
-				std::cout << "Terminating process " << ctx->pid << '\n';
+				if (ctx->is_super) {
+					regdump(&ctx->m_regs, ctx->m_pc);
+					panic();
+				} else {
+					regdump(&ctx->u_regs, ctx->u_pc);
+					std::cout << "Terminating process " << ctx->pid << '\n';
+				}
 				return 1;
 			}
 		
@@ -157,8 +166,8 @@ bool ecallHandler(int syscall, int a1, int a2, int a3) {
 			memset(&ctx->u_regs, 0, sizeof(ctx->u_regs));
 			ctx->u_pc      = a1;
 			ctx->u_regs.sp = a2;
-			// ctx->u_regs.gp = ctx->m_regs.gp;
-			// ctx->u_regs.tp = ctx->m_regs.tp;
+			ctx->u_regs.gp = ctx->m_regs.gp;
+			ctx->u_regs.tp = ctx->m_regs.tp;
 			// Have trap handler return to user mode.
 			return 0;
 	}
@@ -170,14 +179,12 @@ bool trapHandler() {
 	using namespace kernel;
 	
 	// Check what received the trap.
-	size_t mstatus;
-	asm ("csrr %0, mstatus" : "=r" (mstatus));
 	ctx_t *ctx;
 	asm ("csrr %0, mscratch" : "=r" (ctx));
 	size_t mcause;
 	asm ("csrr %0, mcause" : "=r" (mcause));
 	
-	if (mstatus & 0x00001800) {
+	if (ctx->is_super) {
 		// It was the kernel.
 		std::cout << "Kernel received ";
 	} else {
@@ -206,10 +213,10 @@ bool trapHandler() {
 	std::cout << '\n';
 	
 	// Decide what to do next.
-	if (mstatus & 0x00001800) {
+	if (ctx->is_super) {
 		// It was the kernel.
 		regdump(&ctx->m_regs, ctx->m_pc);
-		// TODO: Create abort function.
+		panic();
 	} else {
 		// It was a process.
 		regdump(&ctx->u_regs, ctx->u_pc);
@@ -282,6 +289,34 @@ void init() {
 // Set active context.
 void setCtx(ctx_t *ctx) {
 	asm volatile ("csrw mscratch, %0" :: "r" (ctx));
+	ctx->is_super = 1;
+}
+
+// Critical failure.
+void panic() {
+	std::cout << "\n\n**** KERNEL PANIC ****\n\n";
+	
+	ctx_t *ctx;
+	asm ("csrr %0, mscratch" : "=r" (ctx));
+	std::cout << "Kernel regdump:\n";
+	regdump(&ctx->m_regs, ctx->m_pc);
+	std::cout << "\nProcess " << ctx->pid << " regdump:\n";
+	regdump(&ctx->u_regs, ctx->u_pc);
+	std::cout << '\n';
+	
+	std::cout << "SCRATCH:\n" << std::hex
+		<< "  0x" << ctx->scratch[0] << '\n'
+		<< "  0x" << ctx->scratch[1] << '\n'
+		<< "  0x" << ctx->scratch[2] << '\n'
+		<< "  0x" << ctx->scratch[3] << '\n'
+		<< "  0x" << ctx->scratch[4] << '\n'
+		<< "  0x" << ctx->scratch[5] << '\n'
+		<< "  0x" << ctx->scratch[6] << '\n'
+		<< "  0x" << ctx->scratch[7] << '\n';
+	
+	std::cout << "\n**** HALTED ****\n";
+	asm volatile ("csrc mstatus, %0" :: "r" (8));
+	while (1);
 }
 
 }

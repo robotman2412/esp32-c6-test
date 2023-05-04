@@ -77,10 +77,8 @@ customTrap0:
 	sw t1, ctx_scratch_4(t0)
 	csrr t3, mepc
 	sw t3, ctx_scratch_5(t0)
-	li t2, 0x1800
-	and t2, t2, t1
-	beq t2, x0, .utrap
-	# j .mtrap
+	lw t1, ctx_is_super(t0)
+	beq t1, x0, .utrap
 	
 .mtrap:
 	# Preserve return address.
@@ -112,10 +110,8 @@ customTrap0:
 	sw sp, rs_sp(t3)
 	sw gp, rs_gp(t3)
 	sw tp, rs_tp(t3)
-#ifdef PRESERVE_CALLEE_SAVE
 	sw s0, rs_s0(t3)
 	sw s1, rs_s1(t3)
-#endif
 	sw a0, rs_a0(t3)
 	sw a1, rs_a1(t3)
 	sw a2, rs_a2(t3)
@@ -124,7 +120,6 @@ customTrap0:
 	sw a5, rs_a5(t3)
 	sw a6, rs_a6(t3)
 	sw a7, rs_a7(t3)
-#ifdef PRESERVE_CALLEE_SAVE
 	sw s2, rs_s2(t3)
 	sw s3, rs_s3(t3)
 	sw s4, rs_s4(t3)
@@ -135,7 +130,6 @@ customTrap0:
 	sw s9, rs_s9(t3)
 	sw s10, rs_s10(t3)
 	sw s11, rs_s11(t3)
-#endif
 	sw t4, rs_t4(t3)
 	sw t5, rs_t5(t3)
 	sw t6, rs_t6(t3)
@@ -155,9 +149,7 @@ customTrap0:
 	beq t1, t2, .mhandleEcall
 	
 	# Forward trap.
-	csrr t1, mstatus
-	li t2, 0x1800
-	and t1, t2, t1
+	lw t1, ctx_is_super(t0)
 	beq x0, t1, .uforward
 	j .mforward
 	
@@ -191,11 +183,22 @@ customTrap0:
 .urestore:
 	# Set restore context to U-mode.
 	addi t3, t0, ctx_u_reg
+	#ifndef DUAL_M_MODE
 	# Set MPP to 0.
 	li t1, 0xffffe7ff
 	lw t2, ctx_scratch_4(t0)
 	and t1, t2, t1
 	sw t1, ctx_scratch_4(t0)
+	#else
+	# Set MPP to 3.
+	li t1, 0x00001800
+	lw t2, ctx_scratch_4(t0)
+	or t1, t2, t1
+	sw t1, ctx_scratch_4(t0)
+	#endif
+	# Set to non-supervisor mode.
+	li t1, 0
+	sw t1, ctx_is_super(t0)
 	# Set new PC.
 	lw t1, ctx_u_pc(t0)
 	sw t1, ctx_scratch_5(t0)
@@ -210,6 +213,9 @@ customTrap0:
 	lw t2, ctx_scratch_4(t0)
 	or t1, t2, t1
 	sw t1, ctx_scratch_4(t0)
+	# Set to supervisor mode.
+	li t1, 1
+	sw t1, ctx_is_super(t0)
 	# Set new PC.
 	lw t1, ctx_m_pc(t0)
 	sw t1, ctx_scratch_5(t0)
@@ -264,10 +270,8 @@ customTrap0:
 	lw sp, rs_sp(t3)
 	lw gp, rs_gp(t3)
 	lw tp, rs_tp(t3)
-#ifdef PRESERVE_CALLEE_SAVE
 	lw s0, rs_s0(t3)
 	lw s1, rs_s1(t3)
-#endif
 	lw a0, rs_a0(t3)
 	lw a1, rs_a1(t3)
 	lw a2, rs_a2(t3)
@@ -276,7 +280,6 @@ customTrap0:
 	lw a5, rs_a5(t3)
 	lw a6, rs_a6(t3)
 	lw a7, rs_a7(t3)
-#ifdef PRESERVE_CALLEE_SAVE
 	lw s2, rs_s2(t3)
 	lw s3, rs_s3(t3)
 	lw s4, rs_s4(t3)
@@ -287,7 +290,6 @@ customTrap0:
 	lw s9, rs_s9(t3)
 	lw s10, rs_s10(t3)
 	lw s11, rs_s11(t3)
-#endif
 	lw t4, rs_t4(t3)
 	lw t5, rs_t5(t3)
 	lw t6, rs_t6(t3)

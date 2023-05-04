@@ -146,6 +146,9 @@ struct ctx_t {
 	// Usermode: Size of ABI function table.
 	size_t  u_abi_size;
 	
+	// Current mode is supervising.
+	int is_super;
+	
 	// Usermode: PMP settings.
 	// riscv_pmp_t   u_pmp;
 	
@@ -158,70 +161,13 @@ static_assert(offsetof(ctx_t, m_regs) == 128, "offset of m_regs must be 256");
 static_assert(offsetof(ctx_t, scratch) == 256, "offset of scratch must be 256");
 static_assert(offsetof(ctx_t, u_pc) == 288, "offset of u_pc must be 288");
 static_assert(offsetof(ctx_t, m_pc) == 292, "offset of m_pc must be 292");
-static_assert(offsetof(ctx_t, u_abi_table) == 312, "offset of u_abi_table must be 308");
-static_assert(offsetof(ctx_t, u_abi_size) == 316, "offset of u_abi_size must be 312");
+static_assert(offsetof(ctx_t, u_abi_table) == 312, "offset of u_abi_table must be 312");
+static_assert(offsetof(ctx_t, u_abi_size) == 316, "offset of u_abi_size must be 316");
+static_assert(offsetof(ctx_t, is_super) == 320, "offset of u_abi_size must be 320");
 
-// Store all registers.
-static inline void storeRegisters(riscv_regs_t *storage) __attribute__((always_inline));
-static inline void storeRegisters(riscv_regs_t *storage) {
-	asm volatile ("sw x1, %0" : "=m" (storage->x1));
-	asm volatile ("sw x2, %0" : "=m" (storage->x2));
-	asm volatile ("sw x3, %0" : "=m" (storage->x3));
-	asm volatile ("sw x4, %0" : "=m" (storage->x4));
-	asm volatile ("sw x5, %0" : "=m" (storage->x5));
-	asm volatile ("sw x6, %0" : "=m" (storage->x6));
-	asm volatile ("sw x7, %0" : "=m" (storage->x7));
-	asm volatile ("sw x8, %0" : "=m" (storage->x8));
-	asm volatile ("sw x9, %0" : "=m" (storage->x9));
-	asm volatile ("sw x10, %0" : "=m" (storage->x10));
-	asm volatile ("sw x11, %0" : "=m" (storage->x11));
-	asm volatile ("sw x12, %0" : "=m" (storage->x12));
-	asm volatile ("sw x13, %0" : "=m" (storage->x13));
-	asm volatile ("sw x14, %0" : "=m" (storage->x14));
-	asm volatile ("sw x15, %0" : "=m" (storage->x15));
-	asm volatile ("sw x16, %0" : "=m" (storage->x16));
-	asm volatile ("sw x17, %0" : "=m" (storage->x17));
-	asm volatile ("sw x18, %0" : "=m" (storage->x18));
-	asm volatile ("sw x19, %0" : "=m" (storage->x19));
-	asm volatile ("sw x20, %0" : "=m" (storage->x20));
-	asm volatile ("sw x21, %0" : "=m" (storage->x21));
-	asm volatile ("sw x22, %0" : "=m" (storage->x22));
-	asm volatile ("sw x23, %0" : "=m" (storage->x23));
-	asm volatile ("sw x24, %0" : "=m" (storage->x24));
-	asm volatile ("sw x25, %0" : "=m" (storage->x25));
-	asm volatile ("sw x26, %0" : "=m" (storage->x26));
-	asm volatile ("sw x27, %0" : "=m" (storage->x27));
-	asm volatile ("sw x28, %0" : "=m" (storage->x28));
-	asm volatile ("sw x29, %0" : "=m" (storage->x29));
-	asm volatile ("sw x30, %0" : "=m" (storage->x30));
-	asm volatile ("sw x31, %0" : "=m" (storage->x31));
-}
 
-// Enable interrupts.
-static inline void enableInterrupts() __attribute__((always_inline));
-static inline void enableInterrupts() {
-	asm volatile (
-		"li t0, 0x00000008\n"
-		"csrs mstatus, t0"
-	);
-}
-
-// Disable interrupts.
-static inline void disableInterrupts() __attribute__((always_inline));
-static inline void disableInterrupts() {
-	asm volatile (
-		"li t0, 0x00000008\n"
-		"csrs mstatus, t0"
-	);
-}
-
-// Machine mode instruction: Get current HART id.
-static inline int mhartid() {
-	int id;
-	asm ("csrr %0, mhartid" : "=r" (id));
-	return id;
-}
-
+// Critical failure.
+void panic() __attribute__((noreturn));
 // Do all generic setup required for user mode.
 void init();
 // Set active context.
