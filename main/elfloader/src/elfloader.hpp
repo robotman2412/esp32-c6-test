@@ -305,6 +305,8 @@ struct Program {
 	
 	// Actual address of entrypoint.
 	void *entry;
+	// Context required to free allocated memory.
+	void *memory_cookie;
 	// Allocated memory.
 	void *memory;
 	// Size of allocated memory.
@@ -325,8 +327,8 @@ struct Program {
 class ELFFile {
 	public:
 		// Some callback that allocates memory for program loading.
-		// Returns pointer to allocated memory on success, zero on failure.
-		using Allocator = std::function<size_t(size_t vaddr, size_t len, size_t align)>;
+		// Returns pointer to allocated memory and cookie required to release memory on success, zero and zero on failure.
+		using Allocator = std::function<std::pair<size_t, size_t>(size_t vaddr, size_t len, size_t align)>;
 		
 		// File descriptor to use for loading.
 		// Not closed by this class.

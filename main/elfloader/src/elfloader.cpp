@@ -342,8 +342,10 @@ Program ELFFile::load(Allocator alloc) {
 	
 	// Get memory.
 	out.vaddr_req = addrMin;
-	out.vaddr_real = alloc(addrMin, addrMax - addrMin, align);
+	auto allocation = alloc(addrMin, addrMax - addrMin, align);
+	out.vaddr_real = allocation.first;
 	out.memory = (void *) out.vaddr_real;
+	out.memory_cookie = (void *) allocation.second;
 	out.size = addrMax - addrMin;
 	size_t offs = out.vaddr_real - addrMin;
 	if (!out) {

@@ -29,18 +29,42 @@
 
 namespace loader {
 
-// Forwards directly to malloc.
-size_t mallocForward(size_t vaddr, size_t len, size_t align);
-
 // Represents a single program's execution environment.
 struct Linkage {
-	public:
+	protected:
 		// Map of all loaded symbols.
 		elf::SymMap symbols;
 		// List of loaded program entries.
 		std::vector<elf::Program> loaded;
+		// List of loaded ELF files.
+		std::vector<elf::ELFFile> files;
 		// Entry function if applicable.
 		void *entryFunc = nullptr;
+		
+		// Whether the executable has been loaded.
+		bool hasExecutable;
+		// Whether the linking has been attempted.
+		bool linkAttempted;
+		// Whether the linking was successful.
+		bool linkSuccessful;
+		
+	public:
+		Linkage();
+		~Linkage();
+		
+		// Get the symbols map.
+		const auto &getSymbols() const { return symbols; }
+		// Get the list of loaded program entries.
+		const auto &getLoaded() const { return loaded; }
+		// Get the list of loaded ELF files.
+		const auto &getFiles() const { return files; }
+		// Get the determined entry point function.
+		const void *getEntryFunc() const { return entryFunc; }
+		
+		// Whether this is a program ready for execution.
+		bool isProgReady() const { return hasExecutable && linkSuccessful; }
+		// Whether this is a library ready for use.
+		bool isLibReady() const { return !hasExecutable && linkSuccessful; }
 		
 		// Load a library from a file.
 		// Returns success status.
@@ -48,6 +72,9 @@ struct Linkage {
 		// Load the executable from a file.
 		// Returns success status.
 		bool loadExecutable(FILE *fd);
+		// Perform final dynamic linking before code execution can begin.
+		// Returns success status.
+		bool link();
 };
 
 }

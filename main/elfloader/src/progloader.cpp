@@ -43,6 +43,7 @@ size_t mallocAligned(size_t vaddr, size_t len, size_t align) {
 // Load a library from a file.
 // Returns success status.
 bool Linkage::loadLibrary(FILE *fd) {
+	if (linkAttempted) { return false; }
 	// Create reading context.
 	auto elf = elf::ELFFile(fd);
 	
@@ -50,23 +51,22 @@ bool Linkage::loadLibrary(FILE *fd) {
 	if (!elf.readDyn()) return false;
 	
 	// Try to load progbits.
-	auto prog = elf.load(mallocAligned);
+	auto prog = elf.load([](size_t vaddr, size_t len, size_t align) {
+		size_t mem  = (size_t) malloc(len + align);
+		size_t addr = mem + align - mem % align;
+		return std::pair(addr, mem);
+	});
 	if (!prog) return false;
-	
-	// Try to perform the linkage.
-	if (!elf::relocate(elf, prog, symbols)) {
-		free(prog.memory);
-		return false;
-	}
 	
 	// Export the symbols.
 	if (!elf::exportSymbols(elf, prog, symbols)) {
-		free(prog.memory);
+		free(prog.memory_cookie);
 		return false;
 	}
 	
 	// Add to loaded things list.
 	loaded.push_back(prog);
+	files.push_back(std::move(elf));
 	
 	// Apply MPU shenanigans.
 	if (!mpu::applyPH(elf, prog)) {
@@ -79,12 +79,31 @@ bool Linkage::loadLibrary(FILE *fd) {
 // Load the executable from a file.
 // Returns success status.
 bool Linkage::loadExecutable(FILE *fd) {
+	if (linkAttempted || hasExecutable) { return false; }
 	// Yep this can be easily forwarded.
 	if (loadLibrary(fd)) {
+		hasExecutable = true;
 		entryFunc = loaded.back().entry;
 		return true;
 	}
 	return false;
+}
+
+// Perform final dynamic linking before code execution can begin.
+// Returns success status.
+bool Linkage::link() {
+	if (linkAttempted) { return linkSuccessful; }
+	linkAttempted = true;
+	
+	// Link all the things.
+	for (size_t i = 0; i < loaded.size(); i++) {
+		if (!elf::relocate(files[i], loaded[i], symbols)) {
+			return false;
+		}
+	}
+	
+	linkSuccessful = true;
+	return true;
 }
 
 };
