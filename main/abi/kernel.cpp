@@ -121,30 +121,34 @@ static void regdump(const riscv_regs_t *regs, unsigned long pc) {
 bool ecallHandler(int syscall, int a1, int a2, int a3) {
 	using namespace kernel;
 	
+	// Get context.
 	ctx_t *ctx;
 	asm ("csrr %0, mscratch" : "=r" (ctx));
 	
 	switch ((syscall_t) syscall) {
 		default:
+			// Unimplemented system call.
 			std::cout << "Unimplemented system call 0x" << std::hex << syscall << '\n';
 			if (ctx->is_super) {
-				regdump(&ctx->m_regs, ctx->m_pc);
 				panic();
 			} else {
 				regdump(&ctx->u_regs, ctx->u_pc);
 				std::cout << "Terminating process " << ctx->pid << '\n';
 			}
-			return 0;
+			return 1;
 		
 		case syscall_t::SYS_ABICALL:
+			if (ctx->is_super) goto priv;
+			// ABI call.
 			if (a1 >= 0 && a1 < ctx->u_abi_size) {
 				std::cout << "ABI call #" << std::dec << a1 << '\n';
+				ctx->is_super = 1;
 				makeABICall(ctx, ctx->u_abi_table[a1]);
+				ctx->is_super = 0;
 				return 0;
 			} else {
 				std::cout << "Unimplemented ABI call #" << std::dec << a1 << '\n';
 				if (ctx->is_super) {
-					regdump(&ctx->m_regs, ctx->m_pc);
 					panic();
 				} else {
 					regdump(&ctx->u_regs, ctx->u_pc);
@@ -154,14 +158,19 @@ bool ecallHandler(int syscall, int a1, int a2, int a3) {
 			}
 		
 		case syscall_t::SYS_EXIT:
+			if (ctx->is_super) goto priv;
+			std::cout << "Process " << ctx->pid << " exited with code " << a1 << '\n';
 			// Simply jump back to machine mode.
 			return 1;
 		
 		case syscall_t::SYS_USERJUMP:
+			if (!ctx->is_super) goto nopriv;
+			std::cout << "Process " << ctx->pid << " starting\n";
 			// Extremely simple jump to user mode.
 			return 0;
 		
 		case syscall_t::SYS_USERENTER:
+			if (!ctx->is_super) goto nopriv;
 			// Create usermode context.
 			memset(&ctx->u_regs, 0, sizeof(ctx->u_regs));
 			ctx->u_pc      = a1;
@@ -171,6 +180,18 @@ bool ecallHandler(int syscall, int a1, int a2, int a3) {
 			// Have trap handler return to user mode.
 			return 0;
 	}
+	
+	// It jumps here when M-mode system call made from U-mode.
+	nopriv:
+	std::cout << "Process " << ctx->pid << " made M-mode system call 0x" << std::hex << syscall << " from U-mode\n";
+	regdump(&ctx->u_regs, ctx->u_pc);
+	std::cout << "Terminating process " << ctx->pid << '\n';
+	return 1;
+	
+	priv:
+	// It jumps here when U-mode system call made from M-mode.
+	std::cout << "Kernel made U-mode system call 0x" << std::hex << syscall << " from M-mode\n";
+	panic();
 }
 
 // Generic synchronous trap handler.
@@ -215,7 +236,6 @@ bool trapHandler() {
 	// Decide what to do next.
 	if (ctx->is_super) {
 		// It was the kernel.
-		regdump(&ctx->m_regs, ctx->m_pc);
 		panic();
 	} else {
 		// It was a process.
@@ -290,6 +310,19 @@ void init() {
 void setCtx(ctx_t *ctx) {
 	asm volatile ("csrw mscratch, %0" :: "r" (ctx));
 	ctx->is_super = 1;
+}
+
+// Set active context to default context.
+static ctx_t defualtCtx;
+void setDefaultCtx() {
+	setCtx(&defualtCtx);
+}
+
+// Get active context.
+ctx_t *getCtx() {
+	ctx_t *out;
+	asm ("csrr %0, mscratch" : "=r" (out));
+	return out;
 }
 
 // Critical failure.

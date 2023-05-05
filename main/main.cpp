@@ -15,6 +15,7 @@
 #include <abi.hpp>
 
 #include <kernel.hpp>
+#include <runtime.hpp>
 
 extern const char elf_start[] asm("_binary_main_o_start");
 extern const char elf_end[] asm("_binary_main_o_end");
@@ -22,11 +23,118 @@ extern const char elf_end[] asm("_binary_main_o_end");
 extern const char elf2_start[] asm("_binary_main2_o_start");
 extern const char elf2_end[] asm("_binary_main2_o_end");
 
+extern const char elf4_start[] asm("_binary_main4_o_start");
+extern const char elf4_end[] asm("_binary_main4_o_end");
+
 extern const char elflib_start[] asm("_binary_libtest_so_start");
 extern const char elflib_end[] asm("_binary_libtest_so_end");
 
 
 
+static kernel::ctx_t kctx;
+
+void testForever() {
+	while(1);
+	asm volatile(
+		"  la a0, %0\n"
+		"  ecall"
+		:: "i" (kernel::SYS_EXIT)
+		: "a0", "memory"
+	);
+}
+
+void startTheThing(void *ignored) {
+	kernel::setCtx(&kctx);
+	kctx.u_pc = (long) &testForever;
+	// while(1);
+	asm volatile (
+		"  fence\n"		// Fence for user data
+		"  fence.i\n"	// Fence for user code
+		"  li a0, %0\n"	// Set system call number
+		"  ecall\n"		// Perform system call
+		:: "i" (kernel::SYS_USERJUMP)
+		: "a0", "memory"
+	);
+	vTaskDelete(NULL);
+}
+
+void dummyTask(void *ignored) {
+	while (1) vTaskDelay(10);
+}
+
+extern "C" void app_main() {
+	// Dump ISRs.
+	for (int i = 0; i < 32; i++) {
+		printf("ISR %1d:  %p\n", i, intr_handler_get(i));
+	}
+	
+	// Allow user-mode read-write-execute access to all of memory.
+	mpu::appendRegion({
+		0, 0x100000000,
+		0,
+		1, 1, 1,
+		1
+	});
+	
+	// Load the ELF thingylizer.
+	FILE *elf_fd = fmemopen((void*) elf4_start, elf4_end-elf4_start, "r");
+	loader::Linkage prog;
+	prog.loadExecutable(elf_fd);
+	abi::exportSymbols(prog.getSymbols());
+	prog.link();
+	printf("Load offset 0x%08lx\n", prog.getLoaded()[0].vaddr_offset());
+	
+	// Create the kernel.
+	kernel::init();
+	
+	// // Start a task with the program innit.
+	// auto &actx = abi::newContext();
+	// bool  res  = runtime::startPreloaded(std::move(prog), actx);
+	// while(1) vTaskDelay(10);
+	
+	// Start a task in here.
+	kernel::setCtx(&kctx);
+	
+	int         argc   = 1;
+	const char *argv[] = { "a.out" };
+	const char *envp[] = { NULL };
+	
+	uint32_t *my_stak = new uint32_t[1024];
+	
+	memset(&kctx.u_regs, 0, sizeof(kctx.u_regs));
+	kctx.u_pc      = (long) prog.getEntryFunc();
+	kctx.u_regs.sp = (long) (my_stak + 1023);
+	kctx.u_regs.a0 = argc;
+	kctx.u_regs.a1 = (long) argv;
+	kctx.u_regs.a2 = (long) envp;
+	asm volatile ("mv %0, gp" : "=r" (kctx.u_regs.gp));
+	asm volatile ("mv %0, tp" : "=r" (kctx.u_regs.tp));
+	
+	// TaskHandle_t handle;
+	// xTaskCreate(dummyTask, "A", 2048, NULL, 1, &handle);
+	// vTaskDelay(1);
+	
+	// Run user program.
+	kernel::setCtx(&kctx);
+	// kctx.u_abi_table = abi::getAbiTable();
+	// kctx.u_abi_size  = abi::getAbiTableSize();
+	// asm volatile (
+	// 	"  fence\n"		// Fence for user data
+	// 	"  fence.i\n"	// Fence for user code
+	// 	"  li a0, %0\n"	// Set system call number
+	// 	"  ecall\n"		// Perform system call
+	// 	:: "i" (kernel::SYS_USERJUMP)
+	// 	: "a0", "memory"
+	// );
+	TaskHandle_t handle;
+	xTaskCreate(startTheThing, "A", 4096, NULL, 1, &handle);
+	while(1) vTaskDelay(10);
+	
+}
+
+
+
+/*
 static kernel::ctx_t kernelCtx;
 
 int cookie = 0;
@@ -40,20 +148,20 @@ void setTheCookie(int to) {
 extern "C" void userCode() __attribute__((naked));
 void userCode() {
 	// Manual write of cookie variable.
-	asm volatile("li t0, 1234"); /* New value of cookie */
-	asm volatile("sw t0, cookie, t1"); /* Write to cookie variable using register t1 as address scratch */
+	asm volatile("li t0, 1234"); // New value of cookie
+	asm volatile("sw t0, cookie, t1"); // Write to cookie variable using register t1 as address scratch
 	
-	// Stall forever, but in assembly.
-	asm volatile(".funny:\nj .funny");
+	// Cause some chaos.
+	// asm volatile(".word 0");
 	
 	// ABI call write of cookie variable.
-	asm volatile("li t0, 5678"); /* New value of cookie */
-	asm volatile("li a0, 513"); /* Systemcall: Make ABI call */
-	asm volatile("li a1, 0"); /* ABI call: function index (setTheCookie) */
-	asm volatile("ecall"); /* Perform system call */
+	asm volatile("li t0, 5678"); // New value of cookie
+	asm volatile("li a0, 513"); // Systemcall: Make ABI call
+	asm volatile("li a1, 5"); // ABI call: function index (setTheCookie)
+	asm volatile("ecall"); // Perform system call
 	
 	// Exit.
-	asm volatile("li a0, 512"); /* Systemcall: Exit */
+	asm volatile("li a0, 512"); // Systemcall: Exit
 	asm volatile("ecall");
 }
 
@@ -82,7 +190,15 @@ extern "C" void app_main() {
 	
 	// Table of system calls.
 	kernel::fptr_t abi[] = {
-		(kernel::fptr_t) &setTheCookie
+		(kernel::fptr_t) &setTheCookie,
+		(kernel::fptr_t) &setTheCookie,
+		(kernel::fptr_t) &setTheCookie,
+		(kernel::fptr_t) &setTheCookie,
+		(kernel::fptr_t) &setTheCookie,
+		(kernel::fptr_t) &setTheCookie,
+		(kernel::fptr_t) &setTheCookie,
+		(kernel::fptr_t) &setTheCookie,
+		(kernel::fptr_t) &setTheCookie,
 	};
 	
 	// Install custom trap handler.
@@ -98,47 +214,8 @@ extern "C" void app_main() {
 	// Run the user-mode program.
 	goToMyUserCode(userCode);
 	std::cout << "Cookie: " << std::dec << cookie << '\n';
-	
-	return;
-	
-	
-	/*
-	kernel::init();
-	kernel::setCtx(&kernelCtx);
-	kernelCtx.u_abi_table = abi::getAbiTable();
-	kernelCtx.u_abi_size  = abi::getAbiTableSize();
-	
-	loader::Linkage prog;
-	abi::exportSymbols(prog.symbols);
-	
-	FILE *elf_fd = fmemopen((void *) elf2_start, elf2_end - elf2_start, "r");
-	auto res = prog.loadExecutable(elf_fd);
-	if (!res) return;
-	
-	auto regions = mpu::readRegions();
-	for (const auto &region: regions) {
-		std::cout << "Region:\n";
-		std::cout << "  Base:   0x" << std::hex << region.base << '\n';
-		std::cout << "  Size:   0x" << region.size << '\n';
-		std::cout << "  RWX:    " << region.read << region.write << region.exec << '\n';
-		std::cout << "  Active: " << region.active << "\n\n";
-	}
-	
-	// Time to run prog.
-	std::cout << "Running program!\n";
-	goToMyUserCode((kernel::fptr_t) prog.entryFunc);
-	std::cout << "Done!\n";
-	// using EF = int(*)(int, const char **, const char**);
-	// EF entry = (EF) prog.entryFunc;
-	// const char *envarr[] = {
-	// 	"EVNVVAR=1",
-	// 	NULL
-	// };
-	// const char *lol = "the_program_lol";
-	// int ec = entry(1, &lol, envarr);
-	// std::cout << "Exit code 0x" << std::hex << ec << '\n';
-	*/
 }
+*/
 
 
 

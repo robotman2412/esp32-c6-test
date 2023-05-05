@@ -108,8 +108,12 @@ customTrap0:
 	# Preserve remaining registers.
 	sw ra, rs_ra(t3)
 	sw sp, rs_sp(t3)
+	#ifdef PRESERVE_GP
 	sw gp, rs_gp(t3)
+	#endif
+	#ifdef PRESERVE_TP
 	sw tp, rs_tp(t3)
+	#endif
 	sw s0, rs_s0(t3)
 	sw s1, rs_s1(t3)
 	sw a0, rs_a0(t3)
@@ -136,8 +140,12 @@ customTrap0:
 	
 	# Load bare minimum machine regs.
 	lw sp, ctx_m_reg_sp(t0)
+	#ifdef PRESERVE_GP
 	lw gp, ctx_m_reg_gp(t0)
+	#endif
+	#ifdef PRESERVE_TP
 	lw tp, ctx_m_reg_tp(t0)
+	#endif
 	
 	# Check for ECALL.
 	csrr t1, mcause
@@ -183,17 +191,17 @@ customTrap0:
 .urestore:
 	# Set restore context to U-mode.
 	addi t3, t0, ctx_u_reg
-	#ifndef DUAL_M_MODE
-	# Set MPP to 0.
-	li t1, 0xffffe7ff
-	lw t2, ctx_scratch_4(t0)
-	and t1, t2, t1
-	sw t1, ctx_scratch_4(t0)
-	#else
+	#ifdef DUAL_M_MODE
 	# Set MPP to 3.
 	li t1, 0x00001800
 	lw t2, ctx_scratch_4(t0)
 	or t1, t2, t1
+	sw t1, ctx_scratch_4(t0)
+	#else
+	# Set MPP to 0.
+	li t1, 0xffffe7ff
+	lw t2, ctx_scratch_4(t0)
+	and t1, t2, t1
 	sw t1, ctx_scratch_4(t0)
 	#endif
 	# Set to non-supervisor mode.
@@ -236,7 +244,11 @@ customTrap0:
 #else
 	# Handle trap.
 	la ra, trapHandler
+	li t1, 0x08
+	csrs mstatus, t1
 	jalr ra, ra
+	li t1, 0x08
+	csrc mstatus, t1
 	j .checkRestore
 #endif
 	
@@ -254,7 +266,11 @@ customTrap0:
 #else
 	# Handle trap.
 	la ra, trapHandler
+	li t1, 0x08
+	csrs mstatus, t1
 	jalr ra, ra
+	li t1, 0x08
+	csrc mstatus, t1
 	j .checkRestore
 #endif
 	
@@ -268,8 +284,12 @@ customTrap0:
 	# Restore registers.
 	lw ra, rs_ra(t3)
 	lw sp, rs_sp(t3)
+	#ifdef PRESERVE_GP
 	lw gp, rs_gp(t3)
+	#endif
+	#ifdef PRESERVE_TP
 	lw tp, rs_tp(t3)
+	#endif
 	lw s0, rs_s0(t3)
 	lw s1, rs_s1(t3)
 	lw a0, rs_a0(t3)
@@ -294,8 +314,17 @@ customTrap0:
 	lw t5, rs_t5(t3)
 	lw t6, rs_t6(t3)
 	
+	lw t1, rs_t0(t3)
+	sw t1, ctx_scratch_0(t0)
+	lw t1, rs_t1(t3)
+	sw t1, ctx_scratch_1(t0)
+	lw t1, rs_t2(t3)
+	sw t1, ctx_scratch_2(t0)
+	lw t1, rs_t3(t3)
+	sw t1, ctx_scratch_3(t0)
+	
 	# Enable interrupts.
-	li t1, 0x00000088
+	li t1, 0x80
 	csrs mstatus, t1
 	
 	# Restore tempregs.
@@ -306,5 +335,5 @@ customTrap0:
 	lw t1, ctx_scratch_1(t0)
 	csrrw t0, mscratch, t0   # prev. to in t0,  ctx in mscratch
 	
-	# Return from interrupt.
+	# Return from trap.
 	mret

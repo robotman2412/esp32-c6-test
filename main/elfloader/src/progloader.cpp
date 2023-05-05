@@ -28,28 +28,33 @@
 
 namespace loader {
 
-// Forwards directly to malloc.
-size_t mallocForward(size_t vaddr, size_t len, size_t align) {
-	return (size_t) malloc(len);
-}
 
-// Uses malloc to get an ALIGNED chunk of stuf.
-size_t mallocAligned(size_t vaddr, size_t len, size_t align) {
-	size_t addr = (size_t) malloc(len + align);
-	addr += align - addr % align;
-	return addr;
+Linkage::Linkage():
+	entryFunc(nullptr),
+	hasExecutable(0),
+	linkAttempted(0),
+	linkSuccessful(0) {}
+Linkage::~Linkage() {}
+
+// Discard unused information (mostly linkage information after `linkAttempted` is true).
+void Linkage::garbageCollect() {
+	if (linkAttempted) {
+		files.clear();
+	}
 }
 
 // Load a library from a file.
 // Returns success status.
 bool Linkage::loadLibrary(FILE *fd) {
 	if (linkAttempted) { return false; }
+	printf("1\n");
 	// Create reading context.
 	auto elf = elf::ELFFile(fd);
 	
 	// Try to read data.
 	if (!elf.readDyn()) return false;
 	
+	printf("2\n");
 	// Try to load progbits.
 	auto prog = elf.load([](size_t vaddr, size_t len, size_t align) {
 		size_t mem  = (size_t) malloc(len + align);
@@ -58,21 +63,25 @@ bool Linkage::loadLibrary(FILE *fd) {
 	});
 	if (!prog) return false;
 	
+	printf("3\n");
 	// Export the symbols.
 	if (!elf::exportSymbols(elf, prog, symbols)) {
 		free(prog.memory_cookie);
 		return false;
 	}
 	
+	printf("4\n");
 	// Add to loaded things list.
 	loaded.push_back(prog);
 	files.push_back(std::move(elf));
 	
+	printf("5\n");
 	// Apply MPU shenanigans.
-	if (!mpu::applyPH(elf, prog)) {
-		std::cout << "Applying MPU settings failed, ignoring.\n";
-	}
+	// if (!mpu::applyPH(elf, prog)) {
+	// 	std::cout << "Applying MPU settings failed, ignoring.\n";
+	// }
 	
+	printf("6\n");
 	return true;
 }
 

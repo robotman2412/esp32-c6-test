@@ -50,10 +50,13 @@ struct Linkage {
 		
 	public:
 		Linkage();
+		Linkage(Linkage &&) = default;
 		~Linkage();
 		
 		// Get the symbols map.
 		const auto &getSymbols() const { return symbols; }
+		// Get the symbols map.
+		auto &getSymbols() { return symbols; }
 		// Get the list of loaded program entries.
 		const auto &getLoaded() const { return loaded; }
 		// Get the list of loaded ELF files.
@@ -65,6 +68,9 @@ struct Linkage {
 		bool isProgReady() const { return hasExecutable && linkSuccessful; }
 		// Whether this is a library ready for use.
 		bool isLibReady() const { return !hasExecutable && linkSuccessful; }
+		
+		// Discard unused information (mostly linkage information after `linkAttempted` is true).
+		void garbageCollect();
 		
 		// Load a library from a file.
 		// Returns success status.

@@ -18,9 +18,11 @@ clean:
 
 build:
 	$(MAKE) -C lib/libcstub
+	$(MAKE) -C lib/libbadge
 	$(MAKE) -C lib/test1
 	$(MAKE) -C app/test2
 	$(MAKE) -C app/test3
+	$(MAKE) -C app/test4
 	source "$(IDF_PATH)/export.sh" && idf.py build
 
 flash: build

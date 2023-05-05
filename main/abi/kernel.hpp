@@ -152,7 +152,7 @@ struct ctx_t {
 	// Usermode: PMP settings.
 	// riscv_pmp_t   u_pmp;
 	
-	// Program ID.
+	// Program ID, intended for use by the ABI implementation.
 	int pid;
 };
 
@@ -172,6 +172,10 @@ void panic() __attribute__((noreturn));
 void init();
 // Set active context.
 void setCtx(ctx_t *ctx);
+// Set active context to default context.
+void setDefaultCtx();
+// Get active context.
+ctx_t *getCtx();
 
 }
 

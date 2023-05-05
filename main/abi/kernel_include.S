@@ -22,6 +22,10 @@
 	SOFTWARE.
 */
 
+// Whether to preserve GP
+// #define PRESERVE_GP
+// Whether to preserve TP
+// #define PRESERVE_TP
 // Whether to forward non-ecall traps from U-mode.
 // #define FORWARD_NON_ECALL_U_TRAPS
 // Whether to forward non-ecall traps from M-mode.
