@@ -1,23 +1,9 @@
 idf_component_register(
     SRCS
         "main.cpp"
-        "abi/abi.cpp"
-        "abi/runtime.cpp"
-        "abi/kernel.cpp"
-        "abi/trap.S"
-        "abi/abicall.S"
-        "abi/abiwrapper.S"
     INCLUDE_DIRS
         "."
-        "abi"
-        "kernel"
-        "elfloader/src"
     EMBED_FILES
-        "../app/test2/build/main.o"
-        "../app/test3/build/main2.o"
         "../app/test4/build/main4.o"
-        "../lib/test1/build/libtest.so"
+        "../lib/test2/build/libtest2.so"
 )
-
-add_subdirectory(elfloader)
-target_link_libraries(${COMPONENT_LIB} PUBLIC elfloader)

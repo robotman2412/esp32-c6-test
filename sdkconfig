@@ -1650,6 +1650,14 @@ CONFIG_WIFI_PROV_AUTOSTOP_TIMEOUT=30
 CONFIG_WIFI_PROV_STA_ALL_CHANNEL_SCAN=y
 # CONFIG_WIFI_PROV_STA_FAST_SCAN is not set
 # end of Wi-Fi Provisioning Manager
+
+#
+# Badge native apps
+#
+# CONFIG_BADGEABI_ENABLE_KERNEL is not set
+CONFIG_BADGEABI_OVERRIDE_MALLOC=y
+CONFIG_BADGEABI_OVERRIDE_STDIO=y
+# end of Badge native apps
 # end of Component config
 
 # Deprecated options for backward compatibility

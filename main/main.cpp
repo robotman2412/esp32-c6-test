@@ -7,30 +7,54 @@
 #include <stdio.h>
 #include <esp_log.h>
 
-#include <elfloader.hpp>
-#include <progloader.hpp>
+// #include <elfloader.hpp>
+// #include <progloader.hpp>
 
-#include <relocation.hpp>
-#include <mpu.hpp>
-#include <abi.hpp>
+// #include <relocation.hpp>
+// #include <mpu.hpp>
+// #include <abi.hpp>
 
-#include <kernel.hpp>
-#include <runtime.hpp>
+// #include <kernel.hpp>
+// #include <runtime.hpp>
 
-extern const char elf_start[] asm("_binary_main_o_start");
-extern const char elf_end[] asm("_binary_main_o_end");
-
-extern const char elf2_start[] asm("_binary_main2_o_start");
-extern const char elf2_end[] asm("_binary_main2_o_end");
+#include <badgert.h>
 
 extern const char elf4_start[] asm("_binary_main4_o_start");
 extern const char elf4_end[] asm("_binary_main4_o_end");
 
-extern const char elflib_start[] asm("_binary_libtest_so_start");
-extern const char elflib_end[] asm("_binary_libtest_so_end");
+extern const char elflib2_start[] asm("_binary_libtest2_so_start");
+extern const char elflib2_end[] asm("_binary_libtest2_so_end");
 
 
 
+extern "C" void app_main() {
+	// esp_log_level_set("elfloader", ESP_LOG_DEBUG);
+	// esp_log_level_set("badgert", ESP_LOG_DEBUG);
+	// esp_log_level_set("badgeloader", ESP_LOG_DEBUG);
+	
+	// Register the LIBRARY.
+	badgert_register_buf("libtest2.so", (void*) elflib2_start, elflib2_end-elflib2_start);
+	
+	// Load the ELF thingylizer.
+	FILE *elf_fd = fmemopen((void*) elf4_start, elf4_end-elf4_start, "r");
+	badgert_start_fd("main4.o", elf_fd);
+	// runtime::startFD(elf_fd);
+	
+	// loader::Linkage prog;
+	// prog.loadExecutable(elf_fd);
+	// abi::exportSymbols(prog.getSymbols());
+	// prog.link();
+	// printf("Load offset 0x%08lx\n", prog.getLoaded()[0].vaddr_offset());
+	
+	// // Start a task with the program innit.
+	// auto &actx = abi::newContext();
+	// bool  res  = runtime::startPreloaded(std::move(prog), actx);
+	// while(1) vTaskDelay(10);
+}
+
+
+
+/*
 static kernel::ctx_t kctx;
 
 void testForever() {
@@ -87,37 +111,37 @@ extern "C" void app_main() {
 	// Create the kernel.
 	kernel::init();
 	
-	// // Start a task with the program innit.
-	// auto &actx = abi::newContext();
-	// bool  res  = runtime::startPreloaded(std::move(prog), actx);
-	// while(1) vTaskDelay(10);
+	// Start a task with the program innit.
+	auto &actx = abi::newContext();
+	bool  res  = runtime::startPreloaded(std::move(prog), actx);
+	while(1) vTaskDelay(10);
 	
-	// Start a task in here.
-	kernel::setCtx(&kctx);
+	// // Start a task in here.
+	// kernel::setCtx(&kctx);
 	
-	int         argc   = 1;
-	const char *argv[] = { "a.out" };
-	const char *envp[] = { NULL };
+	// int         argc   = 1;
+	// const char *argv[] = { "a.out" };
+	// const char *envp[] = { NULL };
 	
-	uint32_t *my_stak = new uint32_t[1024];
+	// uint32_t *my_stak = new uint32_t[1024];
 	
-	memset(&kctx.u_regs, 0, sizeof(kctx.u_regs));
-	kctx.u_pc      = (long) prog.getEntryFunc();
-	kctx.u_regs.sp = (long) (my_stak + 1023);
-	kctx.u_regs.a0 = argc;
-	kctx.u_regs.a1 = (long) argv;
-	kctx.u_regs.a2 = (long) envp;
-	asm volatile ("mv %0, gp" : "=r" (kctx.u_regs.gp));
-	asm volatile ("mv %0, tp" : "=r" (kctx.u_regs.tp));
+	// memset(&kctx.u_regs, 0, sizeof(kctx.u_regs));
+	// kctx.u_pc      = (long) prog.getEntryFunc();
+	// kctx.u_regs.sp = (long) (my_stak + 1023);
+	// kctx.u_regs.a0 = argc;
+	// kctx.u_regs.a1 = (long) argv;
+	// kctx.u_regs.a2 = (long) envp;
+	// asm volatile ("mv %0, gp" : "=r" (kctx.u_regs.gp));
+	// asm volatile ("mv %0, tp" : "=r" (kctx.u_regs.tp));
 	
-	// TaskHandle_t handle;
-	// xTaskCreate(dummyTask, "A", 2048, NULL, 1, &handle);
-	// vTaskDelay(1);
+	// // TaskHandle_t handle;
+	// // xTaskCreate(dummyTask, "A", 2048, NULL, 1, &handle);
+	// // vTaskDelay(1);
 	
-	// Run user program.
-	kernel::setCtx(&kctx);
-	// kctx.u_abi_table = abi::getAbiTable();
-	// kctx.u_abi_size  = abi::getAbiTableSize();
+	// // Run user program.
+	// kernel::setCtx(&kctx);
+	// // kctx.u_abi_table = abi::getAbiTable();
+	// // kctx.u_abi_size  = abi::getAbiTableSize();
 	// asm volatile (
 	// 	"  fence\n"		// Fence for user data
 	// 	"  fence.i\n"	// Fence for user code
@@ -126,11 +150,12 @@ extern "C" void app_main() {
 	// 	:: "i" (kernel::SYS_USERJUMP)
 	// 	: "a0", "memory"
 	// );
-	TaskHandle_t handle;
-	xTaskCreate(startTheThing, "A", 4096, NULL, 1, &handle);
-	while(1) vTaskDelay(10);
+	// // TaskHandle_t handle;
+	// // xTaskCreate(startTheThing, "A", 4096, NULL, 1, &handle);
+	// // while(1) vTaskDelay(10);
 	
 }
+*/
 
 
 

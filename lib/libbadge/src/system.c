@@ -24,6 +24,9 @@
 
 #include "system.h"
 
+// Exit thingy.
+void _exit(int ec) __attribute__((weak)) __attribute__((noreturn));
+void _exit(int ec) {}
 // Yield to the scheduler.
 void yield() __attribute__((weak));
 void yield() {}

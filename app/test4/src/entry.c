@@ -1,9 +1,9 @@
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 
-// Declare main function.
 extern int main(int argc, char **argv, char **envp);
+
 
 // Initialisers list.
 typedef void (*init_func_t)();
@@ -25,14 +25,14 @@ static size_t num_exit_entries = 0;
 int __cxa_atexit(exit_func_t callback, void *arg, void *dso_handle) {
 	num_exit_entries ++;
 	void *mem = realloc(exit_entries, num_exit_entries * sizeof(exit_entry_t));
-	// // if (!mem) abort();
-	// exit_entries = mem;
-	// exit_entries[num_exit_entries-1] = (exit_entry_t) {
-	// 	callback, arg
-	// };
+	// if (!mem) abort();
+	exit_entries = mem;
+	exit_entries[num_exit_entries-1] = (exit_entry_t) {
+		callback, arg
+	};
 }
 
-// Copy of `envp` from main.
+// Copy of `envp` used to implement `getenv`.
 char **_envp;
 
 // Get value of environment variable `__env`, or NULL if it does not exist.
@@ -54,25 +54,16 @@ int _start(int argc, char **argv, char **envp) {
 	
 	// Run global constructors.
 	for (init_func_t *i = __start_init_array; i != __stop_init_array; i++) {
-		// (*i)();
-		// malloc(0);
+		(*i)();
 	}
 	
 	int retval = main(argc, argv, envp);
 	
 	// Run global deconstructors.
-	// for (size_t i = 0; i < num_exit_entries; i++) {
-		// exit_entries[i].func(exit_entries[i].arg);
-	// }
-	// free(exit_entries);
+	for (size_t i = 0; i < num_exit_entries; i++) {
+		exit_entries[i].func(exit_entries[i].arg);
+	}
+	free(exit_entries);
 	
-	puts("Exit time.");
-	
-	asm volatile(
-		"  li a0, 512\n"
-		"  mv a1, %0\n"
-		"  ecall"
-		:: "r" (retval)
-		: "a0", "a1", "memory"
-	);
+	_exit(retval);
 }

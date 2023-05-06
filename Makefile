@@ -20,6 +20,7 @@ build:
 	$(MAKE) -C lib/libcstub
 	$(MAKE) -C lib/libbadge
 	$(MAKE) -C lib/test1
+	$(MAKE) -C lib/test2
 	$(MAKE) -C app/test2
 	$(MAKE) -C app/test3
 	$(MAKE) -C app/test4

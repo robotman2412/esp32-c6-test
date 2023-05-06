@@ -4,6 +4,8 @@ PHDRS
 	codeseg PT_LOAD;
 	rodataseg PT_LOAD;
 	dataseg PT_LOAD;
+	/* Dynamic linking information */
+	dynseg PT_DYNAMIC;
 }
 
 SECTIONS
@@ -22,6 +24,11 @@ SECTIONS
 	.rodata : { *(.rodata) *(.rodata*) } :rodataseg
 	.data   : { *(.data) *(.data*) } :dataseg
 	.bss    : { *(.bss) *(.bss*) }
+	
+	/* Dynamic linking information. */
+	.dynamic  : { KEEP(*(.dynamic)) } :dynseg :rodataseg
+	.dynstr   : { KEEP(*(.dynstr)) }
+	.rela.dyn : { KEEP(*(.rela.dyn)) }
 }
 
 /*

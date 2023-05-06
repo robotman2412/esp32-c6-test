@@ -53,12 +53,13 @@ include_directories(
 # Create output file and add sources.
 add_executable(main4.o
 	src/entry.c
-	src/main.c
+	src/main.cpp
 )
 
 # Link the libraries yes.
 target_link_libraries(main4.o
 	${CMAKE_CURRENT_LIST_DIR}/../../lib/libcstub/build/libc.so
 	${CMAKE_CURRENT_LIST_DIR}/../../lib/libbadge/build/libbadge.so
+	${CMAKE_CURRENT_LIST_DIR}/../../lib/test2/build/libtest2.so
 )
 

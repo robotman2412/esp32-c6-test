@@ -41,12 +41,7 @@ extern "C" {
 #endif
 
 // Exit without running any of the exit handlers.
-static inline void _exit(int ec) __attribute__((naked)) __attribute__((noreturn));
-static inline void _exit(int ec) {
-	asm volatile ("mv a1, a0");
-	asm volatile ("li a0, 512");
-	asm volatile ("ecall");
-}
+extern void _exit(int ec) __attribute__((noreturn));
 
 // Convert a c-string `__src` to a double.
 extern double atof(const char *__src)
@@ -82,7 +77,8 @@ extern void atexit(void (*__fptr)(void))
 	__attribute__((__nonnull__(1)));
 
 // Exit the program.
-extern void exit(int __exitcode);
+extern void exit(int __exitcode)
+	__attribute__((__noreturn__));
 
 // Get value of environment variable `__env`, or NULL if it does not exist.
 extern char *getenv(const char *__env);
