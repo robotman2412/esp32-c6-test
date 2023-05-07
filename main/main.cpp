@@ -26,18 +26,31 @@ extern const char elflib2_start[] asm("_binary_libtest2_so_start");
 extern const char elflib2_end[] asm("_binary_libtest2_so_end");
 
 
+#define MEM_LOG \
+	ESP_LOGI("main", "Free memory: %lu bytes (-%lu bytes)", esp_get_free_heap_size(), baseline-esp_get_free_heap_size());
 
 extern "C" void app_main() {
 	// esp_log_level_set("elfloader", ESP_LOG_DEBUG);
-	// esp_log_level_set("badgert", ESP_LOG_DEBUG);
-	// esp_log_level_set("badgeloader", ESP_LOG_DEBUG);
+	esp_log_level_set("badgert", ESP_LOG_DEBUG);
+	esp_log_level_set("badgeloader", ESP_LOG_DEBUG);
+	esp_log_level_set("badgeabi", ESP_LOG_DEBUG);
+	
+	uint32_t baseline = esp_get_free_heap_size();
 	
 	// Register the LIBRARY.
+	MEM_LOG
 	badgert_register_buf("libtest2.so", (void*) elflib2_start, elflib2_end-elflib2_start);
 	
 	// Load the ELF thingylizer.
+	MEM_LOG
 	FILE *elf_fd = fmemopen((void*) elf4_start, elf4_end-elf4_start, "r");
+	MEM_LOG
 	badgert_start_fd("main4.o", elf_fd);
+	MEM_LOG
+	vTaskDelay(pdMS_TO_TICKS(200));
+	MEM_LOG
+	vTaskDelay(pdMS_TO_TICKS(2000));
+	MEM_LOG
 	// runtime::startFD(elf_fd);
 	
 	// loader::Linkage prog;
