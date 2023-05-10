@@ -24,6 +24,7 @@ build:
 	$(MAKE) -C app/test2
 	$(MAKE) -C app/test3
 	$(MAKE) -C app/test4
+	$(MAKE) -C app/test5
 	source "$(IDF_PATH)/export.sh" && idf.py build
 
 flash: build

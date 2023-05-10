@@ -4,6 +4,5 @@ idf_component_register(
     INCLUDE_DIRS
         "."
     EMBED_FILES
-        "../app/test4/build/main4.o"
-        "../lib/test2/build/libtest2.so"
+        "../app/test5/build/main5.o"
 )
