@@ -22,9 +22,26 @@
 	SOFTWARE.
 */
 
-#include "malloc.h"
+#pragma once
 
-// void *malloc (size_t __len) { return NULL; }
-// void  free   (void *__mem) {}
-// void *calloc (size_t __count, size_t __size) { return NULL; }
-// void *realloc(void *__orig, size_t __len) { return NULL; }
+typedef __builtin_va_list va_list;
+#define va_list va_list
+
+#define va_start(v,l) __builtin_va_start(v,l)
+#define va_end(v) __builtin_va_end(v)
+#define va_arg(v,l) __builtin_va_arg(v,l)
+#define va_copy(d,s) __builtin_va_copy(d,s)
+#define __va_copy(d,s) __builtin_va_copy(d,s)
+
+#ifndef _VA_LIST
+#define _VA_LIST
+#endif
+#ifndef _VA_LIST_DEFINED
+#define _VA_LIST_DEFINED
+#endif
+#ifndef _VA_LIST_T_H
+#define _VA_LIST_T_H
+#endif
+#ifndef __va_list__
+#define __va_list__
+#endif

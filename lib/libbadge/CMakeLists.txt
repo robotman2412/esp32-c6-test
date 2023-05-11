@@ -16,9 +16,20 @@ set(CMAKE_CXX_COMPILER_FORCED true)
 project(libbadge LANGUAGES C CXX ASM)
 
 # Compiler options: Exceptions disabled, no system libraries.
-add_compile_options(-march=rv32imac -mabi=ilp32 -ffreestanding -fPIC)
+add_compile_options(
+	-march=rv32imac -mabi=ilp32
+	-nostdinc
+	-I${CMAKE_CURRENT_LIST_DIR}/../../lib/libcstub/include
+	-I${CMAKE_CURRENT_LIST_DIR}/../libbadge/include
+	-ffreestanding -fno-exceptions
+	-fPIE
+)
 # Linker options: Relocatable, no system libraries
-add_link_options(-march=rv32imac -mabi=ilp32 -nostdlib -nodefaultlibs -fPIC)
+add_link_options(
+	-march=rv32imac -mabi=ilp32
+	-nostdlib -nodefaultlibs
+	-fPIE
+)
 
 # Add ABI files into include path.
 include_directories(

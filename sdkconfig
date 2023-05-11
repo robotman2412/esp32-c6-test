@@ -1655,8 +1655,6 @@ CONFIG_WIFI_PROV_STA_ALL_CHANNEL_SCAN=y
 # Badge native apps
 #
 # CONFIG_BADGEABI_ENABLE_KERNEL is not set
-CONFIG_BADGEABI_OVERRIDE_MALLOC=y
-CONFIG_BADGEABI_OVERRIDE_STDIO=y
 # end of Badge native apps
 # end of Component config
 

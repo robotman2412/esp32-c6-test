@@ -1,27 +1,29 @@
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <system.h>
 
-const int col_arr[] = {
-	91, 93, 92, 96, 94, 95
-};
+#define N_MEMS 4
+
+void list_alloc_debug();
 
 int main(int argc, char **argv, char **envp) {
-	int c   = -1;
-	int col = 0;
-	do {
-		c = getchar();
-		if (c == -1) {
-			delay_ms(10);
-		} else if (c == '\n') {
-			putchar('\r');
-			putchar('\n');
-		} else if (c >= 0x21 && c <= 0x7e) {
-			printf("\033[%dm%c", col_arr[col++ % 6], c);
-			fflush(stdout);
-		} else if (c == 0x20) {
-			putchar(' ');
-		}
-	} while (c != 0x04);
+	char *mems[N_MEMS];
+	
+	list_alloc_debug();
+	
+	for (size_t i = 0; i < N_MEMS; i++) {
+		size_t len = i*7%64+10;
+		mems[i] = malloc(len);
+		printf("malloc(%zu) = %p\n", len, mems[i]);
+		list_alloc_debug();
+	}
+	
+	for (size_t i = 0; i < N_MEMS; i++) {
+		printf("free(%p)\n", mems[i]);
+		free(mems[i]);
+		list_alloc_debug();
+	}
+	
 	return 0;
 }

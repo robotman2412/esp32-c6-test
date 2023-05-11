@@ -52,10 +52,13 @@ extern "C" {
 #define SEEK_END 2
 
 // Get type definitions.
-#include <bits/types.h>
-#include <bits/types/__fpos_t.h>
-#include <bits/types/FILE.h>
-typedef __fpos_t fpos_t;
+#include <stddef.h>
+#include <cstubbits/fpos_t.h>
+#include <cstubbits/file.h>
+// #include <bits/types.h>
+// #include <bits/types/__fpos_t.h>
+// #include <bits/types/FILE.h>
+// typedef __fpos_t fpos_t;
 
 // Program input.
 extern FILE *__get_stdin();

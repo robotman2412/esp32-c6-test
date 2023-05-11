@@ -22,14 +22,8 @@ project(test1 LANGUAGES C CXX ASM)
 # Compiler options: Exceptions disabled, no system libraries.
 add_compile_options(
 	-march=rv32imac -mabi=ilp32
-	# -nostdinc
+	-nostdinc
 	-I${CMAKE_CURRENT_LIST_DIR}/../../lib/libcstub/include
-	# -I/usr/lib/gcc-cross/riscv64-linux-gnu/9/include
-	# -I/usr/riscv64-linux-gnu/include/c++/9
-	# -I/usr/riscv64-linux-gnu/include/c++/9/riscv64-linux-gnu
-	# -I/usr/riscv64-linux-gnu/include/c++/9/backward
-	# -I/usr/include
-	-I${CMAKE_CURRENT_LIST_DIR}/../../lib/libcstub/include_stubs
 	-I${CMAKE_CURRENT_LIST_DIR}/../../lib/libbadge/include
 	-ffreestanding -fno-exceptions
 	-fPIE
@@ -52,12 +46,12 @@ include_directories(
 
 # Create output file and add sources.
 add_executable(main5.o
-	src/entry.c
 	src/main.c
 )
 
 # Link the libraries yes.
 target_link_libraries(main5.o
+	${CMAKE_CURRENT_LIST_DIR}/../../lib/badgert/build/libbadgert.a
 	${CMAKE_CURRENT_LIST_DIR}/../../lib/libcstub/build/libc.so
 	${CMAKE_CURRENT_LIST_DIR}/../../lib/libbadge/build/libbadge.so
 )

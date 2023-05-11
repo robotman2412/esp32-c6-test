@@ -26,7 +26,7 @@
 
 // Exit thingy.
 void _exit(int ec) __attribute__((weak)) __attribute__((noreturn));
-void _exit(int ec) {}
+void _exit(int ec) { while(1); }
 // Yield to the scheduler.
 void yield() __attribute__((weak));
 void yield() {}
@@ -34,5 +34,11 @@ void yield() {}
 void delay_ms(int64_t millis) __attribute__((weak));
 void delay_ms(int64_t millis) {}
 // Delay for a period of microseconds.
-void delay_ms(int64_t millis) __attribute__((weak));
+void delay_us(int64_t millis) __attribute__((weak));
 void delay_us(int64_t millis) {}
+// Request a new range of memory.
+void *__mem_map(size_t size, size_t min_align, bool allow_exec) __attribute__((weak));
+void *__mem_map(size_t size, size_t min_align, bool allow_exec) { return (void*) 0; }
+// Discard a range of memory.
+void __mem_unmap(void *addr) __attribute__((weak));
+void __mem_unmap(void *addr) {}

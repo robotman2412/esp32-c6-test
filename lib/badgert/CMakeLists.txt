@@ -15,36 +15,30 @@ set(CMAKE_C_COMPILER_FORCED true)
 set(CMAKE_CXX_COMPILER_FORCED true)
 
 # Define the project.
-project(test1 LANGUAGES C CXX ASM)
+project(badgert LANGUAGES C CXX ASM)
 
 # Compiler options: Exceptions disabled, no system libraries.
 add_compile_options(
 	-march=rv32imac -mabi=ilp32
+	-nostdinc
+	-I${CMAKE_CURRENT_LIST_DIR}/../../lib/libcstub/include
+	-I${CMAKE_CURRENT_LIST_DIR}/../libbadge/include
 	-ffreestanding -fno-exceptions
 	-fPIE
 	-fdata-sections -ffunction-sections
 )
-# Linker options: Relocatable, no system libraries
-add_link_options(
-	-march=rv32imac -mabi=ilp32
-	-nostdlib -nodefaultlibs
-	-fPIE
-	-Wl,--gc-sections
-	-T${CMAKE_CURRENT_LIST_DIR}/linker.ld
-)
 
 # Add ABI files into include path.
 include_directories(
-	src
+	include
+	../libcstub/include
+	../libcstub/include_stubs
+	../libbadge/include
 )
-
 
 # Create output file and add sources.
-add_executable(main.o
-	src/entry.c
-	src/main.cpp
+add_library(badgert STATIC
+	src/list_malloc.c
+	src/malloc.c
+	src/start.c
 )
-
-# Link the libraries yes.
-target_link_libraries(main.o ${CMAKE_CURRENT_LIST_DIR}/../../lib/test1/build/libtest.so)
-

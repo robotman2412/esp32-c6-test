@@ -16,8 +16,7 @@ project(libcstub LANGUAGES C)
 # Compiler options: Exceptions disabled, no system libraries.
 add_compile_options(
 	-march=rv32imac -mabi=ilp32
-	# -nostdinc
-	# -I/usr/lib/gcc-cross/riscv64-linux-gnu/9/include/
+	-nostdinc
 	-ffreestanding -fPIC
 )
 # Linker options: Relocatable, no system libraries
@@ -38,5 +37,6 @@ include_directories(
 add_library(c SHARED
 	src/string.c
 	src/malloc.c
+	src/stdlib.c
 	src/stdio.c
 )

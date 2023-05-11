@@ -22,9 +22,22 @@
 	SOFTWARE.
 */
 
-#include "malloc.h"
+#pragma once
 
-// void *malloc (size_t __len) { return NULL; }
-// void  free   (void *__mem) {}
-// void *calloc (size_t __count, size_t __size) { return NULL; }
-// void *realloc(void *__orig, size_t __len) { return NULL; }
+#define NULL ((void*)0)
+#define offsetof(t,f) __builtin_offsetof(t,f)
+
+#ifndef __SIZE_TYPE__
+#define __SIZE_TYPE__ unsigned long
+#endif
+typedef __SIZE_TYPE__ size_t;
+
+#ifndef __PTRDIFF_TYPE__
+#define __PTRDIFF_TYPE__ long
+#endif
+typedef __PTRDIFF_TYPE__ ptrdiff_t;
+
+#ifndef __WCHAR_TYPE__
+#define __WCHAR_TYPE__ int
+#endif
+typedef __WCHAR_TYPE__ wchar_t;

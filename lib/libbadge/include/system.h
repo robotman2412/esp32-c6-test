@@ -25,6 +25,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
 
 // Yield to the scheduler.
 void yield();
@@ -32,3 +34,8 @@ void yield();
 void delay_ms(int64_t millis);
 // Delay for a period of microseconds.
 void delay_us(int64_t millis);
+
+// Request a new range of memory.
+void *__mem_map(size_t size, size_t min_align, bool allow_exec);
+// Discard a range of memory.
+void __mem_unmap(void *addr);

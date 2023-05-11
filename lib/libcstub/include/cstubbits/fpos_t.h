@@ -22,9 +22,36 @@
 	SOFTWARE.
 */
 
-#include "malloc.h"
+#pragma once
 
-// void *malloc (size_t __len) { return NULL; }
-// void  free   (void *__mem) {}
-// void *calloc (size_t __count, size_t __size) { return NULL; }
-// void *realloc(void *__orig, size_t __len) { return NULL; }
+#include "stddef.h"
+
+#ifndef _LIBCSTUB_RESTRICT
+# ifdef __cplusplus
+#  define _LIBCSTUB_RESTRICT
+# else
+#  define _LIBCSTUB_RESTRICT restrict
+# endif
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+	int __count;
+	union {
+		unsigned int __wch;
+		char __wchb[4];
+	};
+} __mbstate_t;
+
+// File position type.
+typedef struct {
+	long __pos;
+	__mbstate_t __state;
+} fpos_t;
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

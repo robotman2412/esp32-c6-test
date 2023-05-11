@@ -22,9 +22,28 @@
 	SOFTWARE.
 */
 
-#include "malloc.h"
+#pragma once
 
-// void *malloc (size_t __len) { return NULL; }
-// void  free   (void *__mem) {}
-// void *calloc (size_t __count, size_t __size) { return NULL; }
-// void *realloc(void *__orig, size_t __len) { return NULL; }
+#include <malloc.h>
+#include <system.h>
+
+// Get amount of free heap space.
+size_t list_get_free_heap_space();
+// Get amount of allocated memory.
+size_t list_get_used_heap_space();
+// Get amount of raw memory usage.
+size_t list_get_used_raw();
+
+// Initialise memory allocator.
+void list_malloc_init();
+// Allocate `size` bytes of memory.
+void *list_malloc(size_t size);
+// Reallocate `mem` to become `size` bytes.
+void *list_realloc(void *mem, size_t size);
+// Free `mem`.
+void list_free(void *mem);
+// Get real size of `mem`.
+size_t list_alloc_size(void *mem);
+
+// Print debug info.
+void list_alloc_debug();

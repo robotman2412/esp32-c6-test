@@ -22,9 +22,9 @@
 	SOFTWARE.
 */
 
-#include "malloc.h"
+#pragma once
 
-// void *malloc (size_t __len) { return NULL; }
-// void  free   (void *__mem) {}
-// void *calloc (size_t __count, size_t __size) { return NULL; }
-// void *realloc(void *__orig, size_t __len) { return NULL; }
+#define bool _Bool
+#define true 1
+#define false 0
+#define __bool_true_false_are_defined 1
