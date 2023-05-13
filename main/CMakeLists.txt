@@ -5,4 +5,6 @@ idf_component_register(
         "."
     EMBED_FILES
         "../app/test5/build/main5.o"
+        "../app/test6/build/main6.o"
+        "../lib/test3/build/libtest3.so"
 )
