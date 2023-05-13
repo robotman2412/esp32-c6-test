@@ -4,3 +4,9 @@
 [submodule "components/badgeabi"]
 	path = components/badgeabi
 	url = https://robotman2412@github.com/robotman2412/badge-elfloader
+[submodule "components/bus-i2c"]
+	path = components/bus-i2c
+	url = https://github.com/Nicolai-Electronics/esp32-component-bus-i2c
+[submodule "lib/pax-graphics"]
+	path = lib/pax-graphics/pax-graphics
+	url = https://robotman2412@github.com/robotman2412/pax-graphics
