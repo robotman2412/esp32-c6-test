@@ -11,7 +11,13 @@ set(target main6.o)
 add_executable(${target}
 	src/main.c
 )
-target_link_libraries(${target} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../lib/test3/build/libtest3.so)
+target_include_directories(${target} PUBLIC
+	${CMAKE_CURRENT_LIST_DIR}/../../lib/pax-graphics/pax-graphics/src
+)
+target_link_libraries(${target} PUBLIC
+	${CMAKE_CURRENT_LIST_DIR}/../../lib/pax-graphics/build/libpax.so
+	m display
+)
 
 # Set compile options.
 badgesdk_define_app(${target})

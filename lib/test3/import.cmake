@@ -25,7 +25,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 if (NOT DEFINED ENV{BADGESDK_PATH})
-	set(ENV{BADGESDK_PATH} $ENV{HOME}/.badgeteam/badgesdk/CMakeLists.txt)
+	set(ENV{BADGESDK_PATH} $ENV{HOME}/.badgeteam/badgesdk)
 endif()
 
-include($ENV{BADGESDK_PATH})
+include($ENV{BADGESDK_PATH}/CMakeLists.txt)

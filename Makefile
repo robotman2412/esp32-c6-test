@@ -23,6 +23,7 @@ app-clean:
 	$(MAKE) -C lib/libcstub clean
 	$(MAKE) -C lib/libbadge clean
 	$(MAKE) -C lib/badgert clean
+	$(MAKE) -C lib/pax-graphics clean
 	$(MAKE) -C lib/test3 clean
 	$(MAKE) -C app/test5 clean
 	$(MAKE) -C app/test6 clean
@@ -31,6 +32,7 @@ app-build:
 	$(MAKE) -C lib/libcstub
 	$(MAKE) -C lib/libbadge
 	$(MAKE) -C lib/badgert
+	$(MAKE) -C lib/pax-graphics
 	$(MAKE) -C lib/test3
 	$(MAKE) -C app/test5
 	$(MAKE) -C app/test6
