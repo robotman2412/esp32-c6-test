@@ -20,7 +20,6 @@ extern const char elflib_end[] asm("_binary_libpax_so_end");
 uint8_t framebuffer[128*64/8];
 
 bool flush_my_disp(const void *buf, size_t buf_len, int x, int y, int width, int height, void *cookie) {
-	ESP_LOGI(TAG, "flush_my_disp(%p, %zu, %d, %d, %d, %d)", buf, buf_len, x, y, width, height);
 	// if (x == 0 && y == 0 && width == 128 && height == 64) {
 		driver_ssd1306_write((const uint8_t *) buf);
 	// } else {
@@ -36,7 +35,7 @@ extern "C" void app_main() {
 	// esp_log_level_set("badgeabi", ESP_LOG_DEBUG);
 	
 	// Start up display.
-	esp_err_t res = i2c_init(0, 5, 4, 100000, 1, 1);
+	esp_err_t res = i2c_init(0, 5, 4, 800000, 1, 1);
 	if (res) {
 		ESP_LOGE(TAG, "I2C init failed: %s", esp_err_to_name(res));
 		return;
