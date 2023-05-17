@@ -8,9 +8,24 @@ SHELL := /usr/bin/env bash
 
 all: flash
 
-prepare:
+checktools:
+	@riscv64-linux-gnu-g++ --version 1>/dev/null 2>/dev/null || echo "[31mPlease install g++-riscv64-linux-gnu[0m"
+	@riscv64-linux-gnu-gcc --version 1>/dev/null 2>/dev/null || echo "[31mPlease install gcc-riscv64-linux-gnu[0m"
+	@riscv64-linux-gnu-gcc --version 1>/dev/null 2>/dev/null && riscv64-linux-gnu-g++ --version 1>/dev/null 2>/dev/null
+
+checksdk: $(HOME)/.badgeteam/badgesdk
+
+$(HOME)/.badgeteam/badgesdk: checktools
+	echo "[32mInstalling BadgeSDK...[0m"
+	mkdir -p ~/.badgesdk
+	git clone https://github.com/robotman2412/badgesdk-src /tmp/badgesdk-src
+	$(MAKE) -s -C /tmp/badgesdk-src
+	rm -rf /tmp/badgesdk-src
+
+prepare: checktools checksdk
 	git submodule update --init --recursive --depth 1
-	sudo apt install g++-riscv64-linux-gnu gcc-riscv64-linux-gnu
+	@g++-riscv64-linux-gnu --version || echo -e \033[31mPlease install g++-riscv64-linux-gnu\033[0m
+	@gcc-riscv64-linux-gnu --version || echo -e \033[31mPlease install gcc-riscv64-linux-gnu\033[0m
 	cd esp-idf; bash install.sh
 
 clean: app-clean
