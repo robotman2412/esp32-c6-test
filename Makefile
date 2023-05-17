@@ -24,29 +24,27 @@ $(HOME)/.badgeteam/badgesdk: checktools
 
 prepare: checktools checksdk
 	git submodule update --init --recursive --depth 1
-	@g++-riscv64-linux-gnu --version || echo -e \033[31mPlease install g++-riscv64-linux-gnu\033[0m
-	@gcc-riscv64-linux-gnu --version || echo -e \033[31mPlease install gcc-riscv64-linux-gnu\033[0m
 	cd esp-idf; bash install.sh
 
 clean: app-clean
 	rm -rf "$(BUILDDIR)"
 
 build: app-build
-	source "$(IDF_PATH)/export.sh" && idf.py build
+	@source "$(IDF_PATH)/export.sh" >/dev/null && idf.py build
 
 app-clean:
-	$(MAKE) -s -C lib/pax-graphics clean
-	$(MAKE) -s -C app/test6 clean
+	@$(MAKE) -s -C lib/pax-graphics clean
+	@$(MAKE) -s -C app/test6 clean
 
 app-build:
-	$(MAKE) -s -C lib/pax-graphics
-	$(MAKE) -s -C app/test6
+	@$(MAKE) -s -C lib/pax-graphics
+	@$(MAKE) -s -C app/test6
 
 flash: build
-	source "$(IDF_PATH)/export.sh" && idf.py flash
+	@source "$(IDF_PATH)/export.sh" >/dev/null && idf.py flash
 
 monitor:
-	source "$(IDF_PATH)/export.sh" && idf.py monitor -p $(PORT)
+	@source "$(IDF_PATH)/export.sh" >/dev/null && idf.py monitor -p $(PORT)
 
 menuconfig:
-	source "$(IDF_PATH)/export.sh" && idf.py menuconfig
+	@source "$(IDF_PATH)/export.sh" >/dev/null && idf.py menuconfig
