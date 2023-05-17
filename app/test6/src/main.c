@@ -32,7 +32,13 @@ int main(int argc, char **argv) {
 		}
 		pax_draw_round_hollow_arc(&buf, 0xffffffff, 64, 32, r0, r1, a0+M_PI/2, a1+M_PI/2);
 		
-		pax_center_text(&buf, 0xffffffff, pax_font_sky, 9, 64, 55, "loading your mom");
+		pax_push_2d(&buf);
+		pax_apply_2d(&buf, matrix_2d_translate(64, 32));
+		pax_apply_2d(&buf, matrix_2d_rotate(now % 9000 / 9000.0f * 2 * M_PI));
+		pax_draw_rect(&buf, 0xffffffff, -5, -5, 10, 10);
+		pax_pop_2d(&buf);
+		
+		pax_center_text(&buf, 0xffffffff, pax_font_sky, 9, 64, 55, "Hi Ther.");
 		
 		display_write(1, framebuffer, sizeof(framebuffer));
 	}
