@@ -33,10 +33,12 @@ build: app-build
 app-clean:
 	@$(MAKE) -s -C lib/pax-graphics clean
 	@$(MAKE) -s -C app/test6 clean
+	@$(MAKE) -s -C app/test7 clean
 
 app-build:
 	@$(MAKE) -s -C lib/pax-graphics
 	@$(MAKE) -s -C app/test6
+	@$(MAKE) -s -C app/test7
 
 flash: build
 	@source "$(IDF_PATH)/export.sh" >/dev/null && idf.py flash

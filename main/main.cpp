@@ -11,6 +11,12 @@ static const char *TAG = "main";
 #include <managed_i2c.h>
 #include <driver_ssd1306.h>
 
+#include <mpu.hpp>
+#include <kernel.hpp>
+
+// extern const char elf_start[] asm("_binary_main7_o_start");
+// extern const char elf_end[] asm("_binary_main7_o_end");
+
 extern const char elf_start[] asm("_binary_main6_o_start");
 extern const char elf_end[] asm("_binary_main6_o_end");
 
@@ -29,6 +35,14 @@ bool flush_my_disp(const void *buf, size_t buf_len, int x, int y, int width, int
 }
 
 extern "C" void app_main() {
+	// mpu::appendRegion({
+	// 	0, 0x100000000,
+	// 	0,
+	// 	1,1,1,
+	// 	1
+	// });
+	// kernel::init();
+	
 	// esp_log_level_set("elfloader", ESP_LOG_DEBUG);
 	// esp_log_level_set("badgert", ESP_LOG_DEBUG);
 	// esp_log_level_set("badgeloader", ESP_LOG_DEBUG);
