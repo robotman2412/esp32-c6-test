@@ -5,6 +5,7 @@
 
 #include <system.h>
 #include <display.h>
+#include <gpio.h>
 
 #include <pax_gfx.h>
 
@@ -15,6 +16,12 @@ int main(int argc, char **argv) {
 	pax_buf_t buf;
 	pax_buf_init(&buf, framebuffer, 64, 128, PAX_BUF_1_GREY);
 	pax_buf_set_orientation(&buf, PAX_O_FLIP_V_ROT_CCW);
+	
+	io_set_mode(21, IO_MODE_INPUT);
+	io_set_mode(22, IO_MODE_INPUT);
+	io_set_pull(21, IO_PULLUP);
+	io_set_pull(22, IO_PULLUP);
+	io_set_mode(15, IO_MODE_OUTPUT);
 	
 	float r0 = 15, r1 = 20;
 	while (1) {
@@ -38,7 +45,12 @@ int main(int argc, char **argv) {
 		pax_draw_rect(&buf, 0xffffffff, -5, -5, 10, 10);
 		pax_pop_2d(&buf);
 		
-		pax_center_text(&buf, 0xffffffff, pax_font_sky, 9, 64, 55, "Hi Ther.");
+		if (!io_read(21)) {
+			pax_center_text(&buf, 0xffffffff, pax_font_sky, 9, 64, 55, "hI tHER!");
+		} else {
+			pax_center_text(&buf, 0xffffffff, pax_font_sky, 9, 64, 55, "Hi Ther.");
+		}
+		io_write(15, io_read(22));
 		
 		display_write(1, framebuffer, sizeof(framebuffer));
 	}
