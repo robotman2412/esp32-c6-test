@@ -1,0 +1,14 @@
+cmake_minimum_required(VERSION 3.10.0)
+
+set(CMAKE_C_COMPILER riscv32-unknown-linux-gnu-gcc)
+set(CMAKE_C_COMPILER_FORCED true)
+set(CMAKE_EXPORT_COMPILE_COMMANDS true)
+
+project(baremetalc6 C ASM)
+
+add_compile_options(-nodefaultlibs)
+add_link_options(-nodefaultlibs -nostartfiles -T${CMAKE_CURRENT_LIST_DIR}/linker.ld)
+
+add_executable(main
+	src/entrypoint.S
+)
