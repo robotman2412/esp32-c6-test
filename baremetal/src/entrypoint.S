@@ -16,4 +16,19 @@ _raw_start:
 	sb a0, 0(t0)
 	li a0, 0x0a
 	sb a0, 0(t0)
-	j _raw_start
+halt:
+	j halt
+	
+	# Dummy read-only data.
+	.section ".rodata"
+	.align 2
+	.word 0xdeadbeef
+	
+	# Dummy read-write data.
+	.section ".data"
+	.align 2
+	.word 0xf00dbabe
+	
+	# Dummy zero-init data.
+	.section ".bss"
+	.lcomm dummysymbol, 4
