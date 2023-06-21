@@ -8,8 +8,28 @@ PHDRS
 
 SECTIONS
 {
-	. = 0x42000000;
-	__start_xip = 0x42000000;
+	__start_xip  = 0x42000000;
+	__start_sram = 0x40800000;
+	
+	/* RAM sections. */
+	. = __start_sram;
+	__start_data = .;
+	.data : AT(SIZEOF(.esphdr) + SIZEOF(.espseg.0)) {
+		__global_pointer$ = .;
+		*(.data) *(.data*)
+		. = ALIGN(4);
+	} :dataseg
+	__stop_data = .;
+	
+	__start_bss = .;
+	.bss : {
+		*(.bss) *(.bss*)
+		. = ALIGN(4);
+	} :NONE
+	__stop_bss = .;
+	
+	/* FLASH sections. */
+	. = __start_xip;
 	
 	/* ESP image header. */
 	.esphdr : AT(0) {
@@ -17,7 +37,7 @@ SECTIONS
 		BYTE(3);			/* Segment count. */
 		BYTE(0x02);			/* SPI mode. */
 		BYTE(0x10);			/* SPI speed/size. */
-		LONG(_raw_start);	/* Entrypoint. */
+		LONG(_start);		/* Entrypoint. */
 		BYTE(0xee);			/* WP pin state. */
 		BYTE(0x00);			/* Drive settings. */
 		BYTE(0x00);
@@ -32,27 +52,36 @@ SECTIONS
 	
 	/* ESP image segment 0. */
 	.espseg.0 : AT(LOADADDR(.esphdr) + SIZEOF(.esphdr)) {
+		LONG(__start_data);
+		LONG(__stop_data - __start_data);
+	} :hdrseg
+	
+	/* Defined above: Initialised data segment. */
+	. = . + SIZEOF(.data);
+	
+	/* ESP image segment 1. */
+	.espseg.1 : AT(LOADADDR(.data) + SIZEOF(.data)) {
 		LONG(__start_text);
 		LONG(__stop_text - __start_text);
-	} :hdrseg
+	} :codeseg
 	
 	/* Code sections. */
 	__start_text = .;
-	.text : AT(LOADADDR(.espseg.0) + SIZEOF(.espseg.0)) {
+	.text : AT(LOADADDR(.espseg.1) + SIZEOF(.espseg.1)) {
 		*(.text) *(.text*)
 		. = ALIGN(4);
 	} :codeseg
 	__stop_text = .;
 	
-	/* ESP image segment 1. */
-	.espseg.1 : AT(LOADADDR(.text) + SIZEOF(.text)) {
+	/* ESP image segment 2. */
+	.espseg.2 : AT(LOADADDR(.text) + SIZEOF(.text)) {
 		LONG(__start_rodata);
 		LONG(__stop_rodata - __start_rodata);
 	} :rodataseg
 	
 	/* Read-only data sections. */
 	__start_rodata = .;
-	.init_array : AT(LOADADDR(.espseg.1) + SIZEOF(.espseg.1)) {
+	.init_array : AT(LOADADDR(.espseg.2) + SIZEOF(.espseg.2)) {
 		/* Create symbols to keep track of `.init_array`. */
 		__start_init_array = .;
 		KEEP(*(.init_array))
@@ -63,31 +92,6 @@ SECTIONS
 		. = ALIGN(4);
 	} :rodataseg
 	__stop_rodata = .;
-	
-	/* ESP image segment 2. */
-	.espseg.2 : AT(LOADADDR(.rodata) + SIZEOF(.rodata)) {
-		LONG(__start_data);
-		LONG(__stop_data - __start_data);
-	} :rodataseg
-	
-	/* Data sections. */
-	. = 0x40800000;
-	__start_data = .;
-	.data : AT(LOADADDR(.espseg.2) + SIZEOF(.espseg.2)) {
-		*(.data) *(.data*)
-		. = ALIGN(4);
-	} :dataseg
-	__stop_data = .;
-	
-	__start_bss = .;
-	.bss : {
-		*(.bss) *(.bss*)
-		. = ALIGN(4);
-	} :NONE
-	__stop_bss = .;
 }
 
-/*
-	Set the entry vector to _raw_start.
-*/
-ENTRY(_raw_start)
+ENTRY(_start)

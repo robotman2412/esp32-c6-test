@@ -1,34 +1,65 @@
 
-	.equ uart0_base, 0x60000000
-	.equ uart0_tx_reg, uart0_base + 0x0000
+	# This is the C entrypoint, which will be called when basic CRT is set up.
+	.global main
+	# The global pointer is used for relaxation of `.data` accesses.
+	.global __global_pointer$
+	# First address in `.bss` (inclusive).
+	.global __start_bss
+	# Last address in `.bss` (exclusive).
+	.global __stop_bss
+	# First address in `.init_array` (inclusive).
+	.global __start_init_array
+	# Last address in `.init_array` (exclusive).
+	.global __stop_init_array
 
-	.global _raw_start
-	.type _raw_start, %function
-_raw_start:
-	li t0, uart0_tx_reg
-	li a0, 0x48
-	sb a0, 0(t0)
-	li a0, 0x69
-	sb a0, 0(t0)
-	li a0, 0x21
-	sb a0, 0(t0)
-	li a0, 0x0d
-	sb a0, 0(t0)
-	li a0, 0x0a
-	sb a0, 0(t0)
-halt:
-	j halt
-	
-	# Dummy read-only data.
-	.section ".rodata"
-	.align 2
-	.word 0xdeadbeef
-	
-	# Dummy read-write data.
-	.section ".data"
-	.align 2
-	.word 0xf00dbabe
-	
-	# Dummy zero-init data.
+
+
+	# Reserve stack.
 	.section ".bss"
-	.lcomm dummysymbol, 4
+	.align 2
+	.equ __stack_size, 8192
+	.lcomm __stack_bottom, __stack_size
+	.equ __stack_top, __stack_bottom + __stack_size
+
+
+
+	# Entrypoint from the bootloader.
+	.text
+	.global _start
+	.type _start, %function
+_start:
+	# Set up registers.
+	.option push
+	.option norelax
+	la gp, __global_pointer$
+	mv tp, x0
+	la sp, __stack_top
+	.option pop
+	
+	# Zero out .bss section.
+	la a0, __start_bss
+	la a1, __stop_bss
+	beq a0, a1, .bssinit_skip
+.bssinit_loop:
+	sw x0, 0(a0)
+	addi a0, a0, 4
+	bne a0, a1, .bssinit_loop
+.bssinit_skip:
+	
+	# Run init functions.
+	la s0, __start_init_array
+	la s1, __stop_init_array
+	beq s0, s1, .initfun_skip
+.initfun_loop:
+	lw ra, 0(s0)
+	jalr ra, ra
+	addi s0, s0, 4
+.initfun_skip:
+	bne s0, s1, .initfun_loop
+	
+	# Jump to the C entrypoint.
+	jal main
+	
+	# If this function returns, halt.
+.halt:
+	j .halt

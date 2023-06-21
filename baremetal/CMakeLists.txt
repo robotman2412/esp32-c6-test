@@ -11,4 +11,5 @@ add_link_options(-nodefaultlibs -nostartfiles -T${CMAKE_CURRENT_LIST_DIR}/linker
 
 add_executable(main
 	src/entrypoint.S
+	src/main.c
 )

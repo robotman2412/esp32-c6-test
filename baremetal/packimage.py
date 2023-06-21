@@ -14,7 +14,6 @@ raw_size = fd.tell()
 
 # Append padding bytes.
 padd_size = ((raw_size + 15) & ~15) - raw_size
-print(raw_size, padd_size)
 if padd_size == 0:
     fd.write(b"\0" * 15)
 else:
