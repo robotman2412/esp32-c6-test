@@ -9,7 +9,8 @@ project(baremetalc6 C ASM)
 add_compile_options(-nodefaultlibs)
 add_link_options(-nodefaultlibs -nostartfiles -T${CMAKE_CURRENT_LIST_DIR}/linker.ld)
 
-add_executable(main
+add_executable(main.elf
 	src/entrypoint.S
 	src/main.c
 )
+target_include_directories(main.elf PUBLIC include)
