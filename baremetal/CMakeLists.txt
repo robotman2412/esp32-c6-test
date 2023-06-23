@@ -12,5 +12,6 @@ add_link_options(-nodefaultlibs -nostartfiles -T${CMAKE_CURRENT_LIST_DIR}/linker
 add_executable(main.elf
 	src/entrypoint.S
 	src/main.c
+	src/gpio.c
 )
 target_include_directories(main.elf PUBLIC include)

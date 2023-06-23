@@ -114,3 +114,6 @@
 #define DEBUG_BASE			(PERI_BASE + 0xC2000)
 // Base address of Interrupt Priority Register.
 #define INTPRI_BASE			(PERI_BASE + 0xC5000)
+
+#define WRITE_REG(addr, val) do { *(volatile uint32_t *) (addr) = (val); } while(0)
+#define READ_REG(addr) (*(volatile uint32_t *) (addr))
