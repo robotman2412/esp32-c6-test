@@ -5,6 +5,7 @@
 // Function index for GPIO mode.
 #define ESP32C6_IOMUX_FUNC_GPIO 1
 
+
 // GPIO output register (Access: R/W/SC/WTC)
 #define GPIO_OUT_REG					(GPIOMTX_BASE + 0x0004)
 // GPIO output set register (Access: WT)
@@ -44,6 +45,7 @@
 // GPIO clock gate register (Access: R/W)
 #define GPIO_CLOCK_GATE_REG				(GPIOMTX_BASE + 0x062C)
 
+
 // Clock output configuration register (Access: R/W)
 #define IO_MUX_PIN_CTRL_REG				(IOMUX_BASE + 0x0000)
 // IO MUX configuration register for GPIO 0-30 (Access: R/W)
@@ -82,12 +84,14 @@
 // Configures whether or not to enable filter for pin input signals.
 #define IO_MUX_GPIO_N_FILTER_EN_BIT		0x8000
 
+
 // Bitmask of GPIO pins used for peripherals.
 // The owning peripheral must be deinitialised before the pins can be used for another purpose.
 static uint32_t gpio_is_peripheral = 0;
 // Bitmask of GPIO pins used for regular outputs.
 // Mutually exclusive with `gpio_is_peripheral` bits.
 static uint32_t gpio_is_output     = 0;
+
 
 void io_mode(badge_err_t *err, int pin, io_mode_t mode) {
 	// Check pin bounds.
@@ -189,15 +193,15 @@ void io_write(badge_err_t *err, int pin, bool level) {
 }
 
 bool io_read(badge_err_t *err, int pin) {
-	if (err) {
-		// Check pin bounds.
-		if (pin < 0 || pin > io_count()) {
-			err->cause = ECAUSE_RANGE;
-			err->location = ELOC_GPIO;
-		} else {
-			err->cause = 0;
-		}
+	// Check pin bounds.
+	if (pin < 0 || pin > io_count()) {
+		if (err) err->cause = ECAUSE_RANGE;
+		if (err) err->location = ELOC_GPIO;
+		return 0;
 	}
+	
+	// Clear error status.
+	if (err) err->cause = 0;
 	
 	// Read GPIO input register.
 	return (READ_REG(GPIO_IN_REG) >> pin) & 1;
