@@ -11,7 +11,7 @@ typedef struct {
 
 typedef enum {
 	// Unknown location or no appropriate badge_eloc_t value
-	ELOC_UNKNOWN,
+	ELOC_UNKNOWN = 0,
 	// Digital and analog GPIO pins not used by serial interfaces
 	ELOC_GPIO,
 	// I²C interface
@@ -38,7 +38,7 @@ typedef enum {
 
 typedef enum {
 	// Unknown error or no appropriate badge_ecause_t value
-	ECAUSE_UNKNOWN,
+	ECAUSE_UNKNOWN = 1,
 	// Parameter missing or invalid; generic invalid parameter error code
 	ECAUSE_PARAM,
 	// Parameter out of range
@@ -55,7 +55,7 @@ typedef enum {
 	ECAUSE_TIMEOUT,
 	// The function encountered unexpected behaviour and doesn't know how to continue
 	ECAUSE_UNEXPECTED,
-	// The requested file/port/device… was not found
+	// The requested file/port/device/etc was not found
 	ECAUSE_NOENT,
 	// The given file does not have the expected format
 	ECAUSE_FORMAT,
@@ -65,6 +65,8 @@ typedef enum {
 	ECAUSE_REFUSED,
 	// Requested resource is already in use
 	ECAUSE_INUSE,
+	// Requested resource is available but not configured
+	ECAUSE_NOTCONFIG,
 	// Requested resource does not exist or is unavailable
 	ECAUSE_UNAVAIL,
 	// Could not find a route to the requested host

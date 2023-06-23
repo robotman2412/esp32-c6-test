@@ -1,6 +1,7 @@
 
 #include <stdint.h>
 #include <hardware.h>
+#include <gpio.h>
 
 
 const char hextab[] = "0123456789ABCDEF";
@@ -112,6 +113,16 @@ int64_t timg0_t0_read() {
 	return READ_REG(TIMG0_T0LO_REG) | ((uint64_t) READ_REG(TIMG0_T0HI_REG) << 32LLU);
 }
 
+void echeck(badge_err_t *ec) {
+	if (ec && ec->cause) {
+		print("Error: ECAUSE=0x");
+		printhex(ec->cause, 2);
+		print(", ELOC=0x");
+		printhex(ec->location, 2);
+		print("\n");
+	}
+}
+
 // This is the entrypoint after the stack has been set up and the init functions have been run.
 // Main is not allowed to return, so declare it noreturn.
 void main() __attribute__((noreturn));
@@ -130,9 +141,30 @@ void main() {
 	print("Hello, World!\n");
 	print("This is a C runtime!\n");
 	
+	badge_err_t ec;
+	io_mode(&ec, 22, IO_MODE_INPUT);
+	echeck(&ec);
+	io_mode(&ec, 15, IO_MODE_OUTPUT);
+	echeck(&ec);
+	io_write(&ec, 15, 1);
+	echeck(&ec);
+	
 	int64_t start = timg0_t0_read();
-	while (start + 10000000 > timg0_t0_read());
+	while (start + 1000000 > timg0_t0_read());
 	print("One second delay!\n");
+	
+	echeck(&ec);
+	io_write(&ec, 15, 0);
+	bool state = io_read(&ec, 22);
+	while (1) {
+		bool next = io_read(&ec, 22);
+		if (next != state) {
+			print("IO changed to ");
+			printhex(state, 1);
+			print("\n");
+		}
+		state = next;
+	}
 	
 	while(1);
 }
