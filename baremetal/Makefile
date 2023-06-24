@@ -1,15 +1,11 @@
 
 IDF_PATH ?= $(shell pwd)/../esp-idf
-SHELL := /usr/bin/env bash
+SHELL    := /usr/bin/env bash
+PORT     ?= $(shell ls /dev/ttyUSB0 2>/dev/null || echo /dev/ttyACM0)
 
-.PHONY: all tools clean-tools clean build flash
+.PHONY: all clean-tools clean build flash monitor
 
-all: tools build
-
-tools:
-	@mkdir -p tools
-	@make -s -C elftool
-	@cp elftool/build/elftool tools/elftool
+all: build flash monitor
 
 clean-tools:
 	rm -rf tools
@@ -29,3 +25,7 @@ flash:
 		0x0 bin/bootloader.bin \
 		0x10000 build/main.bin \
 		0x8000 bin/partition-table.bin
+
+monitor:
+	@echo -e "\033[1mType ^A^X to exit.\033[0m"
+	@picocom -q -b 115200 $(PORT)

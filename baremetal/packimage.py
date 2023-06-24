@@ -16,7 +16,7 @@ raw_size = fd.tell()
 padd_size = ((raw_size + 15) & ~15) - raw_size
 if padd_size == 0:
     fd.write(b"\0" * 15)
-else:
+elif padd_size > 1:
     fd.write(b"\0" * (padd_size - 1))
 
 # Initialise checksum.

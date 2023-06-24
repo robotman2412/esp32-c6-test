@@ -10,6 +10,7 @@ SECTIONS
 {
 	__start_xip  = 0x42000000;
 	__start_sram = 0x40800000;
+	__section_alignment = 8;
 	
 	/* RAM sections. */
 	. = __start_sram;
@@ -17,14 +18,14 @@ SECTIONS
 	.data : AT(SIZEOF(.esphdr) + SIZEOF(.espseg.0)) {
 		__global_pointer$ = .;
 		*(.data) *(.data*)
-		. = ALIGN(4);
+		. = ALIGN(__section_alignment);
 	} :dataseg
 	__stop_data = .;
 	
 	__start_bss = .;
 	.bss : {
 		*(.bss) *(.bss*)
-		. = ALIGN(4);
+		. = ALIGN(__section_alignment);
 	} :NONE
 	__stop_bss = .;
 	
@@ -69,7 +70,7 @@ SECTIONS
 	__start_text = .;
 	.text : AT(LOADADDR(.espseg.1) + SIZEOF(.espseg.1)) {
 		*(.text) *(.text*)
-		. = ALIGN(4);
+		. = ALIGN(__section_alignment);
 	} :codeseg
 	__stop_text = .;
 	
@@ -89,7 +90,7 @@ SECTIONS
 	} :rodataseg
 	.rodata : AT(LOADADDR(.init_array) + SIZEOF(.init_array)) {
 		*(.rodata) *(.rodata*)
-		. = ALIGN(4);
+		. = ALIGN(__section_alignment);
 	} :rodataseg
 	__stop_rodata = .;
 }

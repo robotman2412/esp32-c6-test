@@ -6,12 +6,17 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 project(baremetalc6 C ASM)
 
-add_compile_options(-nodefaultlibs)
+add_compile_options(-nodefaultlibs -O2)
 add_link_options(-nodefaultlibs -nostartfiles -T${CMAKE_CURRENT_LIST_DIR}/linker.ld)
 
 add_executable(main.elf
 	src/entrypoint.S
-	src/main.c
+	src/int64.S
+	
 	src/gpio.c
+	src/log.c
+	src/main.c
+	src/rawprint.c
+	src/time.c
 )
 target_include_directories(main.elf PUBLIC include)

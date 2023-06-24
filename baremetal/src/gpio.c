@@ -122,7 +122,6 @@ void io_mode(badge_err_t *err, int pin, io_mode_t mode) {
 	WRITE_REG(IO_MUX_GPIO_N_REG(pin), mux);
 	
 	// Configure FUNC_OUT_SEL to GPIO_OUT_REG.
-	// TODO: Make proper defines for this.
 	WRITE_REG(GPIO_FUNC_N_OUT_SEL_CFG_REG(pin), 128);
 	
 	// Configure output enable bit.
@@ -205,4 +204,120 @@ bool io_read(badge_err_t *err, int pin) {
 	
 	// Read GPIO input register.
 	return (READ_REG(GPIO_IN_REG) >> pin) & 1;
+}
+
+// Determine whether GPIO `pin` is claimed by a peripheral.
+// Returns false on error.
+bool io_is_peripheral(badge_err_t *err, int pin) {
+	// Check pin bounds.
+	if (pin < 0 || pin > io_count()) {
+		if (err) err->cause = ECAUSE_RANGE;
+		if (err) err->location = ELOC_GPIO;
+		return 0;
+	}
+	
+	// Clear error status.
+	if (err) err->cause = 0;
+	
+	return (gpio_is_peripheral >> pin) & 1;
+}
+
+
+
+// Enable or disable "claimed by peripheral" mode for GPIO `pin`.
+void rawgpio_set_peripheral(badge_err_t *err, int pin, bool claim_as_peripheral) {
+	// Check pin bounds.
+	if (pin < 0 || pin > io_count()) {
+		if (err) err->cause = ECAUSE_RANGE;
+		if (err) err->location = ELOC_GPIO;
+		return;
+	}
+	
+	// Set claimed flag.
+	if (claim_as_peripheral) {
+		gpio_is_peripheral |= 1 << pin;
+		gpio_is_output     &= ~(1 << pin);
+	} else {
+		gpio_is_peripheral &= ~(1 << pin);
+	}
+	
+	// Clear error status.
+	if (err) err->cause = 0;
+}
+
+// Route GPIO `pin` to input signal `signo`.
+void rawgpio_route_input(badge_err_t *err, int pin, int signo) {
+	// Check bounds.
+	if (pin < 0 || pin > io_count() || signo < 0 || signo > 127) {
+		if (err) err->cause = ECAUSE_RANGE;
+		if (err) err->location = ELOC_GPIO;
+		return;
+	}
+	
+	// Assert that pin is claimed for peripheral use.
+	if (!((gpio_is_peripheral >> pin) & 1)) {
+		if (err) err->cause = ECAUSE_NOTCONFIG;
+		if (err) err->location = ELOC_GPIO;
+		return;
+	}
+	
+	// Configure FUNC_OUT_SEL.
+	WRITE_REG(GPIO_FUNC_N_OUT_SEL_CFG_REG(pin), signo);
+	
+	// Clear error status.
+	if (err) err->cause = 0;
+}
+
+// Route GPIO `pin` to output signal `signo`.
+void rawgpio_route_output(badge_err_t *err, int pin, int signo) {
+	// Check bounds.
+	if (pin < 0 || pin > io_count() || signo < 0 || signo > 127) {
+		if (err) err->cause = ECAUSE_RANGE;
+		if (err) err->location = ELOC_GPIO;
+		return;
+	}
+	
+	// Assert that pin is claimed for peripheral use.
+	if (!((gpio_is_peripheral >> pin) & 1)) {
+		if (err) err->cause = ECAUSE_NOTCONFIG;
+		if (err) err->location = ELOC_GPIO;
+		return;
+	}
+	
+	// Configure FUNC_IN_SEL.
+	WRITE_REG(GPIO_FUNC_N_IN_SEL_CFG_REG(signo), pin);
+	
+	// Clear error status.
+	if (err) err->cause = 0;
+}
+
+// Disable the signal routing and turn GPIO `pin` into a regular GPIO.
+void rawgpio_unroute(badge_err_t *err, int pin) {
+	// Check pin bounds.
+	if (pin < 0 || pin > io_count()) {
+		if (err) err->cause = ECAUSE_RANGE;
+		if (err) err->location = ELOC_GPIO;
+		return;
+	}
+	
+	// Assert that pin is claimed for peripheral use.
+	if (!((gpio_is_peripheral >> pin) & 1)) {
+		if (err) err->cause = ECAUSE_NOTCONFIG;
+		if (err) err->location = ELOC_GPIO;
+		return;
+	}
+	
+	// Configure FUNC_OUT_SEL.
+	WRITE_REG(GPIO_FUNC_N_OUT_SEL_CFG_REG(pin), 128);
+	
+	// Search FUNC_IN_SEL registers.
+	for (int i = 0; i < 128; i++) {
+		int fpin = READ_REG(GPIO_FUNC_N_IN_SEL_CFG_REG(i)) & 31;
+		if (fpin == pin) {
+			WRITE_REG(GPIO_FUNC_N_IN_SEL_CFG_REG(i), 0x3C);
+		}
+	}
+	
+	// Clear error status.
+	if (err) err->cause = 0;
 }

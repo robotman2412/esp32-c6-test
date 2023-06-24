@@ -6,7 +6,6 @@
 #include <badge_err.h>
 
 
-
 typedef enum {
 	// high-impedance; no digital or analog functions
 	IO_MODE_HIGH_Z,
@@ -32,20 +31,18 @@ typedef enum {
 } io_pull_t;
 
 
-
 // Returns the amount of GPIO pins present.
 // Cannot produce an error.
 #define io_count() (31)
 // Sets the mode of GPIO pin `pin` to `mode`.
-// Produces an error if permission is denied, the pin is in use by I²C/SPI/etc. or if the pin is incapable.
-void io_mode(badge_err_t *ec, int pin, io_mode_t mode);
+void io_mode			(badge_err_t *ec, int pin, io_mode_t mode);
 // Sets the pull resistor behaviour of GPIO pin `pin` to `dir`.
-// Produces an error if permission is denied, the pin is not in an input mode or if the the pin is incapable.
-void io_pull(badge_err_t *ec, int pin, io_pull_t dir);
+void io_pull			(badge_err_t *ec, int pin, io_pull_t dir);
 // Writes level to GPIO pin pin.
-// Produces an error if permission is denied, the pin is not in output mode or if the pin is incapable.
-void io_write(badge_err_t *ec, int pin, bool level);
+void io_write			(badge_err_t *ec, int pin, bool level);
 // Reads logic level value from GPIO pin `pin`.
-// Produces an error if permission is denied or if the pin is incapable.
 // Returns false on error.
-bool io_read(badge_err_t *ec, int pin);
+bool io_read			(badge_err_t *ec, int pin);
+// Determine whether GPIO `pin` is claimed by a peripheral.
+// Returns false on error.
+bool io_is_peripheral	(badge_err_t *ec, int pin);
