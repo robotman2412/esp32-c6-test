@@ -3,6 +3,7 @@
 #include <gpio.h>
 #include <rawgpio.h>
 #include <hardware.h>
+#include <clkconfig.h>
 
 // Signal number for I²C SDA.
 #define I2C_0_SDA_SIGNAL 46
@@ -128,6 +129,26 @@ void i2c_master_init(badge_err_t *ec, int i2c_num, int sda_pin, int scl_pin, int
 		ec->location = ELOC_I2C;
 		return;
 	}
+	
+	// Set I²C peripheral clocks, enable and reset I2C0.
+	// According to TRM, clock should be 20x bitrate.
+	clkconfig_i2c0(bitrate * 20, 1, 1);
+	
+	// Configure I²C timing parameters.
+	REG_WRITE(I2C_SCL_LOW_PERIOD_REG,		10);
+	REG_WRITE(I2C_SDA_HOLD_REG,				3);
+	REG_WRITE(I2C_SDA_SAMPLE_REG,			5);
+	REG_WRITE(I2C_SCL_HIGH_PERIOD_REG,		10);
+	REG_WRITE(I2C_SCL_STOP_HOLD_REG,		20);
+	REG_WRITE(I2C_SCL_STOP_SETUP_REG,		40);
+	REG_WRITE(I2C_SCL_ST_TIME_OUT_REG,		22);
+	REG_WRITE(I2C_SCL_MAIN_ST_TIME_OUT_REG,	22);
+	
+	REG_WRITE(I2C_TO_REG,					(1<<5) | 9);
+	
+	// Configure I²C peripheral.
+	
+	// Perform final config and synchronise.
 	
 	// Route GPIO pins to I²C.
 	rawgpio_route_input (ec, sda_pin, I2C_0_SDA_SIGNAL);
