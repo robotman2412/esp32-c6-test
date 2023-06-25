@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <hardware.h>
 #include <stdint.h>
 

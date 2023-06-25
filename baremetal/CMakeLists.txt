@@ -13,7 +13,9 @@ add_executable(main.elf
 	src/entrypoint.S
 	src/int64.S
 	
+	src/clkconfig.c
 	src/gpio.c
+	src/i2c.c
 	src/log.c
 	src/main.c
 	src/rawprint.c

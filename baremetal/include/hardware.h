@@ -1,4 +1,6 @@
 
+#pragma once
+
 // Base address of peripherals.
 #define PERI_BASE 0x60000000
 

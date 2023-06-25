@@ -1,7 +1,7 @@
 
+#pragma once
+
 #include <gpio.h>
-
-
 
 // Enable or disable "claimed by peripheral" mode for GPIO `pin`.
 void rawgpio_set_peripheral	(badge_err_t *ec, int pin, bool claim_as_peripheral);
